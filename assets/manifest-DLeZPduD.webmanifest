@@ -1,0 +1,18 @@
+{
+  "name": "Где стоять вратарю?",
+  "short_name": "Вратарь",
+  "description": "Тренажер позиционирования футбольного вратаря",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#102218",
+  "theme_color": "#102218",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
