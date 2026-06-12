@@ -448,14 +448,6 @@ function buildVisualHints(result: CheckResult, level: Level, criteria: Criterion
     hints.add("TOO_DEEP_ZONE");
   }
 
-  if (error === "TOO_LEFT") {
-    hints.add("TOO_LEFT_ZONE");
-  }
-
-  if (error === "TOO_RIGHT") {
-    hints.add("TOO_RIGHT_ZONE");
-  }
-
   return Array.from(hints);
 }
 
@@ -495,19 +487,67 @@ function validateFeedback(feedback: FeedbackResult) {
   }
 }
 
+function lineDirectionSummary(result: CheckResult) {
+  const dx = result.evaluation.optimalPoint.x - result.evaluation.goalkeeperPoint.x;
+  const side = dx < 0 ? "вправо" : "влево";
+
+  if (Math.abs(dx) < 1.2) {
+    return "Ты ушёл с линии мяча. Часть ворот открыта.";
+  }
+
+  return `Ты ушёл слишком ${side} от линии мяча. Часть ворот открыта.`;
+}
+
+function movementAdvice(result: CheckResult) {
+  const dx = result.evaluation.optimalPoint.x - result.evaluation.goalkeeperPoint.x;
+  const dy = result.evaluation.optimalPoint.y - result.evaluation.goalkeeperPoint.y;
+  const steps: string[] = [];
+
+  if (Math.abs(dx) >= 1.2) {
+    steps.push(dx > 0 ? "сместись чуть правее" : "сместись чуть левее");
+  }
+
+  if (Math.abs(dy) >= 1.8) {
+    steps.push(dy > 0 ? "выйди на маленький шаг вперёд" : "сделай маленький шаг ближе к воротам");
+  }
+
+  if (steps.length === 0) {
+    return "Останься рядом с линией мяча и точнее поставь точку ног в зелёную зону.";
+  }
+
+  return `${steps.join(" и ")}, ближе к линии мяча.`;
+}
+
+function summaryForResult(result: CheckResult, error?: FeedbackErrorType) {
+  if (error === "TOO_LEFT" || error === "TOO_RIGHT" || error === "TOO_CENTRAL" || result.evaluation.outsideShotAngle) {
+    return lineDirectionSummary(result);
+  }
+
+  return summaryByErrorType[error ?? "WRONG_POSITION"];
+}
+
+function adviceForResult(result: CheckResult, error?: FeedbackErrorType) {
+  if (error === "TOO_LEFT" || error === "TOO_RIGHT" || error === "TOO_CENTRAL" || result.evaluation.outsideShotAngle) {
+    return movementAdvice(result);
+  }
+
+  return adviceByErrorType[error ?? "WRONG_POSITION"];
+}
+
 export function buildFeedback(result: CheckResult, level: Level): FeedbackResult {
   const status = resultStatus(result);
   const error = result.result === "correct" ? undefined : resultError(result, level);
   const criteria = buildCriteria(result, level);
+  const mainAdvice = status === "excellent" ? reinforceByScenarioType[result.evaluation.scenarioType] : adviceForResult(result, error);
   const feedback: FeedbackResult = {
     status,
     title: titleForStatus(status),
-    summary: status === "excellent" ? excellentSummaryByScenarioType[result.evaluation.scenarioType] : summaryByErrorType[error ?? "WRONG_POSITION"],
+    summary: status === "excellent" ? excellentSummaryByScenarioType[result.evaluation.scenarioType] : summaryForResult(result, error),
     criteria,
-    mainAdvice: status === "excellent" ? reinforceByScenarioType[result.evaluation.scenarioType] : adviceByErrorType[error ?? "WRONG_POSITION"],
+    mainAdvice,
     details: {
       why: explainWhy(result, level),
-      howToFix: status === "excellent" ? reinforceByScenarioType[result.evaluation.scenarioType] : adviceByErrorType[error ?? "WRONG_POSITION"]
+      howToFix: mainAdvice
     },
     visualHints: buildVisualHints(result, level, criteria)
   };

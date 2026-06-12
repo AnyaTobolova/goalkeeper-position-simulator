@@ -52,22 +52,6 @@ function ZoneCapsule({ zone, className, fieldHeight }: { zone: OrientedZone; cla
   );
 }
 
-function SideDangerCapsule({ zone, side, fieldHeight }: { zone: OrientedZone; side: "left" | "right"; fieldHeight: number }) {
-  const center = {
-    x: zone.center.x,
-    y: yToSvg(zone.center.y) * (fieldHeight / 100)
-  };
-  const depthHalf = Math.max(1.2, zone.depthHalf * (fieldHeight / 100));
-  const sideHalf = Math.max(0.8, zone.sideHalf * 0.55);
-  const sideOffset = (Math.max(1.4, zone.sideHalf * 1.65) + sideHalf) * (side === "left" ? -1 : 1);
-
-  return (
-    <g transform={`translate(${center.x} ${center.y}) rotate(${zone.angle})`}>
-      <rect className="danger-zone active" x={sideOffset - sideHalf} y={-depthHalf} width={sideHalf * 2} height={depthHalf * 2} rx={sideHalf} ry={sideHalf} />
-    </g>
-  );
-}
-
 function normalizeAngle(angle: number) {
   return ((angle % 360) + 360) % 360;
 }
@@ -189,14 +173,7 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
   const tooHighZone = result?.evaluation.tooHighOrientedZone;
   const wallRect = result?.evaluation.wallZone ? zoneToRect(result.evaluation.wallZone, fieldHeight) : null;
   const hasHint = (hint: VisualHint) => visualHints.includes(hint);
-  const visibleLegendItems = [
-    hasHint("CORRECT_ZONE") && "зелёная - лучшая позиция",
-    hasHint("ALMOST_ZONE") && "оранжевая - допустимо",
-    (hasHint("TOO_HIGH_ZONE") || hasHint("TOO_DEEP_ZONE") || hasHint("TOO_LEFT_ZONE") || hasHint("TOO_RIGHT_ZONE")) && "красная - опасно",
-    hasHint("BALL_TO_GOAL_LINE") && "белая линия - линия удара",
-    hasHint("BALL_MOVEMENT_PATH") && "голубой пунктир - движение мяча",
-    hasHint("BALL_VISIBILITY_LINE") && "голубая линия - обзор мяча"
-  ].filter(Boolean) as string[];
+  const showShotAngle = result && hasHint("BALL_TO_GOAL_LINE");
   const footInsideTarget = result ? result.result === "correct" : true;
   const box = pitch.markings;
   const goalSvgX = (pitch.fieldWidth / 2 - pitch.goalWidth / 2) * scaleX;
@@ -419,9 +396,9 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
 
         {result && (
           <>
-            {(hasHint("NEAR_POST_SECTOR") || hasHint("FAR_POST_SECTOR")) && <polygon className="shot-angle" points={`${ball.x},${ball.y} ${leftSvg.x},${leftSvg.y} ${rightSvg.x},${rightSvg.y}`} />}
+            {showShotAngle && <polygon className="shot-angle" points={`${ball.x},${ball.y} ${leftSvg.x},${leftSvg.y} ${rightSvg.x},${rightSvg.y}`} />}
             {hasHint("BALL_TO_GOAL_LINE") && <line className="analysis-line" x1={ball.x} y1={ball.y} x2={centerSvg.x} y2={centerSvg.y} />}
-            {(hasHint("NEAR_POST_SECTOR") || hasHint("FAR_POST_SECTOR")) && (
+            {showShotAngle && (
               <>
                 <line className="trajectory shot-boundary" x1={ball.x} y1={ball.y} x2={leftSvg.x} y2={leftSvg.y} />
                 <line className="trajectory shot-boundary" x1={ball.x} y1={ball.y} x2={rightSvg.x} y2={rightSvg.y} />
@@ -430,8 +407,6 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
             <g clipPath={`url(#${shotAngleClipId})`}>
               {showAnalysis && hasHint("TOO_DEEP_ZONE") && tooDeepZone && <ZoneCapsule zone={tooDeepZone} className={`danger-zone ${dangerZone === tooDeepZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
               {showAnalysis && hasHint("TOO_HIGH_ZONE") && tooHighZone && <ZoneCapsule zone={tooHighZone} className={`danger-zone ${dangerZone === tooHighZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
-              {showAnalysis && hasHint("TOO_LEFT_ZONE") && almostZone && <SideDangerCapsule zone={almostZone} side="left" fieldHeight={fieldHeight} />}
-              {showAnalysis && hasHint("TOO_RIGHT_ZONE") && almostZone && <SideDangerCapsule zone={almostZone} side="right" fieldHeight={fieldHeight} />}
               {hasHint("ALMOST_ZONE") && almostZone && <ZoneCapsule zone={almostZone} className="almost-zone" fieldHeight={fieldHeight} />}
               {hasHint("CORRECT_ZONE") && optimalSvg && correctZone && <ZoneCapsule zone={correctZone} className="correct-zone" fieldHeight={fieldHeight} />}
             </g>
@@ -457,16 +432,6 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
               />
             )}
             {hasHint("WALL_COVERAGE") && wallRect && <rect className="wall-target-zone" {...wallRect} />}
-            {visibleLegendItems.length >= 3 && (
-              <g className="field-legend" transform={`translate(${focusLeft - margin + 1} ${focusTop - margin + 1.5})`}>
-                <rect width="32" height={visibleLegendItems.length * 3.6 + 2.2} rx="1.2" />
-                {visibleLegendItems.map((item, index) => (
-                  <text key={item} x="1.6" y={3.8 + index * 3.6}>
-                    {item}
-                  </text>
-                ))}
-              </g>
-            )}
           </>
         )}
 

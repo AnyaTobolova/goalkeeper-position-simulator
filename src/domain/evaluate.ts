@@ -243,6 +243,7 @@ export function evaluateGoalkeeper(
     total,
     mainErrorType,
     outsideShotAngle: !insideShotAngle,
+    goalkeeperPoint: goalkeeperPercent,
     optimalPoint: targetPercent,
     correctZone,
     correctOrientedZone: positionZones.correct,

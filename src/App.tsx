@@ -10,7 +10,7 @@ import { facingAngleToBall, normalizeAngle } from "./domain/geometry";
 import { levels } from "./domain/levels";
 import { pitchPresets } from "./domain/presets";
 import { criteriaByScenarioType, getBallSide, type CriterionKey } from "./domain/scenarios";
-import type { CheckResult, ErrorType, Level, PitchConfig, PlayerProfile, Point, Progress, WallConfig } from "./domain/types";
+import type { CheckResult, ErrorType, Level, PitchConfig, PlayerProfile, Point, Progress, VisualHint, WallConfig } from "./domain/types";
 import {
   loadActivePlayerId,
   loadOnboardingComplete,
@@ -339,6 +339,20 @@ function resultClass(result: CheckResult | null) {
   }
 
   return result.result;
+}
+
+function fieldLegendItems(visualHints: VisualHint[]) {
+  const hasHint = (hint: VisualHint) => visualHints.includes(hint);
+
+  return [
+    hasHint("CORRECT_ZONE") && { kind: "green", label: "зеленая зона", text: "лучшая позиция" },
+    hasHint("ALMOST_ZONE") && { kind: "orange", label: "оранжевая зона", text: "допустимо" },
+    (hasHint("TOO_HIGH_ZONE") || hasHint("TOO_DEEP_ZONE")) && { kind: "red", label: "красная зона", text: "опасная глубина" },
+    hasHint("BALL_TO_GOAL_LINE") && { kind: "white-line", label: "белая линия", text: "линия удара" },
+    hasHint("MOVE_ARROW") && { kind: "arrow", label: "стрелка", text: "куда поправить" },
+    hasHint("BALL_MOVEMENT_PATH") && { kind: "blue-line", label: "голубой пунктир", text: "движение мяча" },
+    hasHint("BALL_VISIBILITY_LINE") && { kind: "blue-line", label: "голубая линия", text: "обзор мяча" }
+  ].filter(Boolean) as { kind: string; label: string; text: string }[];
 }
 
 function getNextLevelIndex(currentIndex: number, progress: Progress) {
@@ -1006,6 +1020,7 @@ export function App() {
   const savedLevelIndex = Math.min(levels.length - 1, loadPlayerLastLevelIndex(activePlayerId));
   const hasTrainingToContinue = savedLevelIndex > 0 || Object.values(progress).some((item) => item.attempts > 0);
   const feedback = useMemo(() => (result ? buildFeedback(result, level) : null), [level, result]);
+  const visibleFieldLegend = useMemo(() => fieldLegendItems(feedback?.visualHints ?? []), [feedback]);
   const statsProgressByPlayer = useMemo(() => {
     return Object.fromEntries(players.map((player) => [player.id, player.id === activePlayerId ? progress : loadPlayerProgress(player.id)]));
   }, [activePlayerId, players, progress, statsRefreshKey]);
@@ -1228,7 +1243,21 @@ export function App() {
               <span className="badge">{categoryTitle(level.category)}</span>
               <h2>{level.title}</h2>
             </div>
-            <div className={`result-pill ${resultClass(result)}`}>{resultLabel(result)}</div>
+            <div className="result-summary">
+              <div className={`result-pill ${resultClass(result)}`}>{resultLabel(result)}</div>
+              {visibleFieldLegend.length > 0 && (
+                <div className="result-legend" aria-label="Обозначения на поле">
+                  {visibleFieldLegend.map((item) => (
+                    <div className="result-legend-row" key={`${item.kind}-${item.label}`}>
+                      <span className={`legend-mark ${item.kind}`} aria-hidden="true" />
+                      <span className="legend-label">{item.label}</span>
+                      <span className="legend-separator">-</span>
+                      <span>{item.text}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <FieldView

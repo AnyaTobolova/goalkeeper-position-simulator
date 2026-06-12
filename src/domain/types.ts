@@ -61,8 +61,6 @@ export type VisualHint =
   | "ALMOST_ZONE"
   | "TOO_HIGH_ZONE"
   | "TOO_DEEP_ZONE"
-  | "TOO_LEFT_ZONE"
-  | "TOO_RIGHT_ZONE"
   | "NEAR_POST_SECTOR"
   | "FAR_POST_SECTOR"
   | "MOVE_ARROW"
@@ -202,6 +200,7 @@ export type EvaluationScore = {
   total: number;
   mainErrorType?: ErrorType;
   outsideShotAngle?: boolean;
+  goalkeeperPoint: Point;
   optimalPoint: Point;
   correctZone: Zone;
   notes: string[];

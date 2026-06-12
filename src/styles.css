@@ -204,6 +204,87 @@ h2 {
   background: #b7372f;
 }
 
+.result-summary {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  min-width: min(330px, 42vw);
+}
+
+.result-legend {
+  display: grid;
+  gap: 4px;
+  width: min(330px, 42vw);
+  padding: 8px 10px;
+  border: 1px solid rgba(219, 244, 222, 0.14);
+  border-radius: 8px;
+  background: rgba(7, 20, 13, 0.82);
+  color: #dceee0;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.result-legend-row {
+  display: grid;
+  grid-template-columns: 18px max-content 8px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 5px;
+  min-width: 0;
+}
+
+.legend-mark {
+  justify-self: center;
+  width: 13px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+
+.legend-mark.green {
+  color: rgba(125, 240, 142, 0.95);
+  background: rgba(125, 240, 142, 0.26);
+}
+
+.legend-mark.orange {
+  color: rgba(255, 194, 87, 0.8);
+  background: rgba(255, 194, 87, 0.2);
+}
+
+.legend-mark.red {
+  color: rgba(216, 80, 60, 0.85);
+  background: rgba(216, 80, 60, 0.18);
+}
+
+.legend-mark.white-line,
+.legend-mark.blue-line,
+.legend-mark.arrow {
+  width: 16px;
+  height: 0;
+  border: 0;
+  border-top: 2px dashed rgba(255, 255, 255, 0.9);
+  border-radius: 0;
+  background: transparent;
+}
+
+.legend-mark.blue-line {
+  border-top-color: rgba(91, 210, 255, 0.9);
+}
+
+.legend-mark.arrow {
+  border-top-style: solid;
+  border-top-color: #f6c453;
+}
+
+.legend-label {
+  color: #ecfff0;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.legend-separator {
+  color: rgba(236, 255, 240, 0.58);
+}
+
 .field-shell {
   overflow: hidden;
   border: 1px solid rgba(219, 244, 222, 0.12);
@@ -727,22 +808,6 @@ h2 {
 .criterion-status.dangerous {
   color: #fff5f1;
   background: #d8503c;
-}
-
-.field-legend {
-  pointer-events: none;
-}
-
-.field-legend rect {
-  fill: rgba(7, 20, 13, 0.78);
-  stroke: rgba(219, 244, 222, 0.18);
-  stroke-width: 0.18;
-}
-
-.field-legend text {
-  fill: #ecfff0;
-  font-size: 1.75px;
-  font-weight: 750;
 }
 
 .criterion-row strong,
@@ -1759,6 +1824,12 @@ input:focus {
     padding: 8px 10px;
   }
 
+  .result-summary,
+  .result-legend {
+    width: 100%;
+    min-width: 0;
+  }
+
   .field {
     height: clamp(330px, 56svh, 460px);
     min-height: 0;
@@ -1948,6 +2019,16 @@ input:focus {
 
   .result-pill {
     min-height: 38px;
+  }
+
+  .result-legend {
+    padding: 7px 8px;
+    font-size: 11px;
+  }
+
+  .result-legend-row {
+    grid-template-columns: 16px max-content 7px minmax(0, 1fr);
+    column-gap: 4px;
   }
 
   .field {
