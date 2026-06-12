@@ -5,6 +5,7 @@ import { PlayerPanel } from "./components/PlayerPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { StatsPanel } from "./components/StatsPanel";
 import { checkAnswer } from "./domain/evaluate";
+import { buildFeedback, criterionStatusText } from "./domain/feedback";
 import { facingAngleToBall, normalizeAngle } from "./domain/geometry";
 import { levels } from "./domain/levels";
 import { pitchPresets } from "./domain/presets";
@@ -1004,6 +1005,7 @@ export function App() {
   const activePlayer = players.find((player) => player.id === activePlayerId) ?? players[0];
   const savedLevelIndex = Math.min(levels.length - 1, loadPlayerLastLevelIndex(activePlayerId));
   const hasTrainingToContinue = savedLevelIndex > 0 || Object.values(progress).some((item) => item.attempts > 0);
+  const feedback = useMemo(() => (result ? buildFeedback(result, level) : null), [level, result]);
   const statsProgressByPlayer = useMemo(() => {
     return Object.fromEntries(players.map((player) => [player.id, player.id === activePlayerId ? progress : loadPlayerProgress(player.id)]));
   }, [activePlayerId, players, progress, statsRefreshKey]);
@@ -1237,6 +1239,7 @@ export function App() {
             result={result}
             showAnalysis={whyVisible}
             showDimensions={showDimensions}
+            visualHints={feedback?.visualHints ?? []}
             wall={level.freeKick ? wall : undefined}
             onGoalkeeperChange={(point) => {
               if (!result) {
@@ -1263,13 +1266,13 @@ export function App() {
               <span>Разбор позиции</span>
             </div>
 
-            <p className="coach-text">{result ? feedbackSummary(result, level) : `${activePlayer?.name ?? "Игрок"}, выбери позицию до удара.`}</p>
-            {result && (
+            <p className="coach-text">{feedback ? feedback.summary : `${activePlayer?.name ?? "Игрок"}, выбери позицию до удара.`}</p>
+            {feedback && result && (
               <>
                 <div className="criteria-list" aria-label="Разбор решения">
-                  {buildCriteria(result, level).map((criterion) => (
+                  {feedback.criteria.map((criterion) => (
                     <div className="criterion-row" key={criterion.key}>
-                      <span className={`criterion-status ${criterion.status}`}>{statusText(criterion.status)}</span>
+                      <span className={`criterion-status ${criterion.status}`}>{criterionStatusText(criterion.status)}</span>
                       <div>
                         <strong>{criterion.label}</strong>
                         <small>{criterion.text}</small>
@@ -1295,13 +1298,13 @@ export function App() {
                 )}
                 <div className="how-card">
                   <strong>{result.result === "correct" ? "Как закрепить" : "Как поправить"}</strong>
-                  <span>{mainAdvice(result, level)}</span>
+                  <span>{feedback.mainAdvice}</span>
                 </div>
                 {whyVisible && (
                   <div className="why-card">
                     <strong>Почему так</strong>
-                    <span>{explainDecision(result, level)}</span>
-                    <span>{placementAdvice(result, goalkeeper)}</span>
+                    <span>{feedback.details?.why}</span>
+                    <span>{feedback.details?.howToFix}</span>
                   </div>
                 )}
               </>

@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import type { CheckResult, Level, OrientedZone, PitchConfig, Point, WallConfig, Zone } from "../domain/types";
+import type { CheckResult, Level, OrientedZone, PitchConfig, Point, VisualHint, WallConfig, Zone } from "../domain/types";
 import { fromMeters, goalCenter, leftPost, rightPost, toMeters } from "../domain/geometry";
 
 type FieldViewProps = {
@@ -10,6 +10,7 @@ type FieldViewProps = {
   result: CheckResult | null;
   showAnalysis: boolean;
   showDimensions: boolean;
+  visualHints: VisualHint[];
   wall?: WallConfig;
   onGoalkeeperChange: (point: Point) => void;
   onGoalkeeperFacingChange: (angle: number) => void;
@@ -47,6 +48,22 @@ function ZoneCapsule({ zone, className, fieldHeight }: { zone: OrientedZone; cla
   return (
     <g transform={`translate(${center.x} ${center.y}) rotate(${zone.angle})`}>
       <rect className={className} x={-sideHalf} y={-depthHalf} width={sideHalf * 2} height={depthHalf * 2} rx={sideHalf} ry={sideHalf} />
+    </g>
+  );
+}
+
+function SideDangerCapsule({ zone, side, fieldHeight }: { zone: OrientedZone; side: "left" | "right"; fieldHeight: number }) {
+  const center = {
+    x: zone.center.x,
+    y: yToSvg(zone.center.y) * (fieldHeight / 100)
+  };
+  const depthHalf = Math.max(1.2, zone.depthHalf * (fieldHeight / 100));
+  const sideHalf = Math.max(0.8, zone.sideHalf * 0.55);
+  const sideOffset = (Math.max(1.4, zone.sideHalf * 1.65) + sideHalf) * (side === "left" ? -1 : 1);
+
+  return (
+    <g transform={`translate(${center.x} ${center.y}) rotate(${zone.angle})`}>
+      <rect className="danger-zone active" x={sideOffset - sideHalf} y={-depthHalf} width={sideHalf * 2} height={depthHalf * 2} rx={sideHalf} ry={sideHalf} />
     </g>
   );
 }
@@ -146,7 +163,7 @@ function WallFigure({ x, y, count }: { x: number; y: number; count: number }) {
   );
 }
 
-export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, showAnalysis, showDimensions, wall, onGoalkeeperChange, onGoalkeeperFacingChange, onWallChange }: FieldViewProps) {
+export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, showAnalysis, showDimensions, visualHints, wall, onGoalkeeperChange, onGoalkeeperFacingChange, onWallChange }: FieldViewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const shotAngleClipId = useRef(`shot-angle-clip-${Math.random().toString(36).slice(2)}`).current;
   const fieldHeight = Math.max(64, (pitch.fieldLength / pitch.fieldWidth) * viewBoxWidth);
@@ -171,6 +188,15 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
   const tooDeepZone = result?.evaluation.tooDeepOrientedZone;
   const tooHighZone = result?.evaluation.tooHighOrientedZone;
   const wallRect = result?.evaluation.wallZone ? zoneToRect(result.evaluation.wallZone, fieldHeight) : null;
+  const hasHint = (hint: VisualHint) => visualHints.includes(hint);
+  const visibleLegendItems = [
+    hasHint("CORRECT_ZONE") && "зелёная - лучшая позиция",
+    hasHint("ALMOST_ZONE") && "оранжевая - допустимо",
+    (hasHint("TOO_HIGH_ZONE") || hasHint("TOO_DEEP_ZONE") || hasHint("TOO_LEFT_ZONE") || hasHint("TOO_RIGHT_ZONE")) && "красная - опасно",
+    hasHint("BALL_TO_GOAL_LINE") && "белая линия - линия удара",
+    hasHint("BALL_MOVEMENT_PATH") && "голубой пунктир - движение мяча",
+    hasHint("BALL_VISIBILITY_LINE") && "голубая линия - обзор мяча"
+  ].filter(Boolean) as string[];
   const footInsideTarget = result ? result.result === "correct" : true;
   const box = pitch.markings;
   const goalSvgX = (pitch.fieldWidth / 2 - pitch.goalWidth / 2) * scaleX;
@@ -393,23 +419,35 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
 
         {result && (
           <>
-            <polygon className="shot-angle" points={`${ball.x},${ball.y} ${leftSvg.x},${leftSvg.y} ${rightSvg.x},${rightSvg.y}`} />
-            <line className="analysis-line" x1={ball.x} y1={ball.y} x2={centerSvg.x} y2={centerSvg.y} />
-            <line className="trajectory danger" x1={ball.x} y1={ball.y} x2={leftSvg.x} y2={leftSvg.y} />
-            <line className="trajectory danger" x1={ball.x} y1={ball.y} x2={rightSvg.x} y2={rightSvg.y} />
+            {(hasHint("NEAR_POST_SECTOR") || hasHint("FAR_POST_SECTOR")) && <polygon className="shot-angle" points={`${ball.x},${ball.y} ${leftSvg.x},${leftSvg.y} ${rightSvg.x},${rightSvg.y}`} />}
+            {hasHint("BALL_TO_GOAL_LINE") && <line className="analysis-line" x1={ball.x} y1={ball.y} x2={centerSvg.x} y2={centerSvg.y} />}
+            {(hasHint("NEAR_POST_SECTOR") || hasHint("FAR_POST_SECTOR")) && (
+              <>
+                <line className="trajectory shot-boundary" x1={ball.x} y1={ball.y} x2={leftSvg.x} y2={leftSvg.y} />
+                <line className="trajectory shot-boundary" x1={ball.x} y1={ball.y} x2={rightSvg.x} y2={rightSvg.y} />
+              </>
+            )}
             <g clipPath={`url(#${shotAngleClipId})`}>
-              {showAnalysis && tooDeepZone && <ZoneCapsule zone={tooDeepZone} className={`danger-zone ${dangerZone === tooDeepZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
-              {showAnalysis && tooHighZone && <ZoneCapsule zone={tooHighZone} className={`danger-zone ${dangerZone === tooHighZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
-              {almostZone && <ZoneCapsule zone={almostZone} className="almost-zone" fieldHeight={fieldHeight} />}
-              {optimalSvg && correctZone && <ZoneCapsule zone={correctZone} className="correct-zone" fieldHeight={fieldHeight} />}
+              {showAnalysis && hasHint("TOO_DEEP_ZONE") && tooDeepZone && <ZoneCapsule zone={tooDeepZone} className={`danger-zone ${dangerZone === tooDeepZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
+              {showAnalysis && hasHint("TOO_HIGH_ZONE") && tooHighZone && <ZoneCapsule zone={tooHighZone} className={`danger-zone ${dangerZone === tooHighZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
+              {showAnalysis && hasHint("TOO_LEFT_ZONE") && almostZone && <SideDangerCapsule zone={almostZone} side="left" fieldHeight={fieldHeight} />}
+              {showAnalysis && hasHint("TOO_RIGHT_ZONE") && almostZone && <SideDangerCapsule zone={almostZone} side="right" fieldHeight={fieldHeight} />}
+              {hasHint("ALMOST_ZONE") && almostZone && <ZoneCapsule zone={almostZone} className="almost-zone" fieldHeight={fieldHeight} />}
+              {hasHint("CORRECT_ZONE") && optimalSvg && correctZone && <ZoneCapsule zone={correctZone} className="correct-zone" fieldHeight={fieldHeight} />}
             </g>
-            {optimalSvg && (
+            {hasHint("MOVE_ARROW") && optimalSvg && (
               <>
                 <line className="move-arrow" x1={keeperSvg.x} y1={keeperSvg.y} x2={optimalSvg.x} y2={optimalSvg.y} markerEnd="url(#arrow)" />
                 <circle className="target-foot-point" cx={optimalSvg.x} cy={optimalSvg.y} r="0.95" />
               </>
             )}
-            {level.previousBall && (
+            {hasHint("BALL_VISIBILITY_LINE") && (
+              <line className={result.errorType === "NO_BALL_VISIBILITY" || result.evaluation.mainErrorType === "NO_BALL_VISIBILITY" ? "visibility-line blocked" : "visibility-line"} x1={keeperSvg.x} y1={keeperSvg.y} x2={ball.x} y2={ball.y} />
+            )}
+            {hasHint("CROSS_TRAJECTORY") && (
+              <path className="trajectory cross" d={`M ${ball.x} ${ball.y} Q ${(ball.x + centerSvg.x) / 2} ${Math.min(ball.y, centerSvg.y) - 12} ${centerSvg.x} ${centerSvg.y}`} />
+            )}
+            {hasHint("BALL_MOVEMENT_PATH") && level.previousBall && (
               <line
                 className="trajectory pass"
                 x1={percentToSvg(level.previousBall).x}
@@ -418,11 +456,21 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
                 y2={percentToSvg(level.ball).y}
               />
             )}
-            {wallRect && <rect className="wall-target-zone" {...wallRect} />}
+            {hasHint("WALL_COVERAGE") && wallRect && <rect className="wall-target-zone" {...wallRect} />}
+            {visibleLegendItems.length >= 3 && (
+              <g className="field-legend" transform={`translate(${focusLeft - margin + 1} ${focusTop - margin + 1.5})`}>
+                <rect width="32" height={visibleLegendItems.length * 3.6 + 2.2} rx="1.2" />
+                {visibleLegendItems.map((item, index) => (
+                  <text key={item} x="1.6" y={3.8 + index * 3.6}>
+                    {item}
+                  </text>
+                ))}
+              </g>
+            )}
           </>
         )}
 
-        {level.previousBall && (
+        {result && hasHint("PREVIOUS_BALL_POINT") && level.previousBall && (
           <circle className="old-ball" cx={percentToSvg(level.previousBall).x} cy={percentToSvg(level.previousBall).y} r="1.35" />
         )}
 

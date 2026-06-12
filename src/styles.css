@@ -323,12 +323,30 @@ h2 {
   stroke-dasharray: 1.1 1;
 }
 
-.trajectory.danger {
-  stroke: rgba(255, 89, 89, 0.82);
+.trajectory.shot-boundary {
+  stroke: rgba(246, 196, 83, 0.86);
 }
 
 .trajectory.pass {
   stroke: rgba(91, 210, 255, 0.85);
+}
+
+.trajectory.cross {
+  stroke: rgba(91, 210, 255, 0.78);
+  stroke-width: 0.5;
+  stroke-dasharray: 1.25 1;
+}
+
+.visibility-line {
+  stroke: rgba(91, 210, 255, 0.86);
+  stroke-width: 0.45;
+  stroke-linecap: round;
+}
+
+.visibility-line.blocked {
+  stroke: rgba(91, 210, 255, 0.72);
+  stroke-dasharray: 1.2 0.8;
+  filter: drop-shadow(0 0 1px rgba(216, 80, 60, 0.8));
 }
 
 .move-arrow {
@@ -704,6 +722,27 @@ h2 {
 .criterion-status.bad {
   color: #fff5f1;
   background: #d8503c;
+}
+
+.criterion-status.dangerous {
+  color: #fff5f1;
+  background: #d8503c;
+}
+
+.field-legend {
+  pointer-events: none;
+}
+
+.field-legend rect {
+  fill: rgba(7, 20, 13, 0.78);
+  stroke: rgba(219, 244, 222, 0.18);
+  stroke-width: 0.18;
+}
+
+.field-legend text {
+  fill: #ecfff0;
+  font-size: 1.75px;
+  font-weight: 750;
 }
 
 .criterion-row strong,

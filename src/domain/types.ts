@@ -46,9 +46,30 @@ export type ErrorType =
   | "WRONG_BODY_ANGLE"
   | "NO_BALL_VISIBILITY"
   | "WALL_COUNT_WRONG"
-  | "WALL_POSITION_WRONG";
+  | "WALL_POSITION_WRONG"
+  | "WRONG_POSITION"
+  | "ALMOST";
 
 export type ResultKind = "correct" | "almost" | "wrong" | "dangerous";
+
+export type VisualHint =
+  | "BALL_TO_GOAL_LINE"
+  | "CURRENT_BALL_POINT"
+  | "PREVIOUS_BALL_POINT"
+  | "BALL_MOVEMENT_PATH"
+  | "CORRECT_ZONE"
+  | "ALMOST_ZONE"
+  | "TOO_HIGH_ZONE"
+  | "TOO_DEEP_ZONE"
+  | "TOO_LEFT_ZONE"
+  | "TOO_RIGHT_ZONE"
+  | "NEAR_POST_SECTOR"
+  | "FAR_POST_SECTOR"
+  | "MOVE_ARROW"
+  | "WALL_COVERAGE"
+  | "BALL_VISIBILITY_LINE"
+  | "DEFENDER_COVERAGE"
+  | "CROSS_TRAJECTORY";
 
 export type Point = {
   x: number;

@@ -29,7 +29,9 @@ const errorTitles: Record<ErrorType, string> = {
   WRONG_BODY_ANGLE: "Корпус не к мячу",
   NO_BALL_VISIBILITY: "Не видит мяч",
   WALL_COUNT_WRONG: "Неверная стенка",
-  WALL_POSITION_WRONG: "Стенка не там"
+  WALL_POSITION_WRONG: "Стенка не там",
+  WRONG_POSITION: "Позиция неудачная",
+  ALMOST: "Почти верно"
 };
 
 const errorHints: Record<ErrorType, string> = {
@@ -48,7 +50,9 @@ const errorHints: Record<ErrorType, string> = {
   WRONG_BODY_ANGLE: "Поверни корпус к мячу, не только поставь ноги в точку.",
   NO_BALL_VISIBILITY: "Стенка должна помогать, но мяч все равно нужно видеть.",
   WALL_COUNT_WRONG: "Подбери число игроков под опасность удара.",
-  WALL_POSITION_WRONG: "Стенка закрывает ближний угол, вратарь - открытую часть."
+  WALL_POSITION_WRONG: "Стенка закрывает ближний угол, вратарь - открытую часть.",
+  WRONG_POSITION: "Вернись к линии мяча и защити ворота.",
+  ALMOST: "Осталась маленькая поправка, чтобы попасть в лучшую зону."
 };
 
 function collectErrorStats(progress: Progress) {
