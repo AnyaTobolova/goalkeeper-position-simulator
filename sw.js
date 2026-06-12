@@ -1,5 +1,5 @@
-const cacheName = "goalkeeper-sim-v1";
-const shellAssets = ["/", "/index.html", "/manifest.webmanifest", "/pwa-icon.svg"];
+const cacheName = "goalkeeper-sim-v2";
+const shellAssets = ["/", "/index.html", "/pwa-icon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -25,18 +25,12 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
-
-      return fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(cacheName).then((cache) => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() => caches.match("/index.html"));
-    })
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(cacheName).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request).then((cached) => cached ?? caches.match("/index.html")))
   );
 });
