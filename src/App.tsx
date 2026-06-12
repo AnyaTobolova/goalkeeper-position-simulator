@@ -1276,7 +1276,6 @@ export function App() {
             goalkeeper={goalkeeper}
             goalkeeperFacing={goalkeeperFacing}
             result={result}
-            showAnalysis={whyVisible}
             showDimensions={showDimensions}
             visualHints={feedback?.visualHints ?? []}
             wall={level.freeKick ? wall : undefined}
@@ -1308,6 +1307,19 @@ export function App() {
             <p className="coach-text">{feedback ? feedback.summary : `${activePlayer?.name ?? "Игрок"}, выбери позицию до удара.`}</p>
             {feedback && result && (
               <>
+                <div className="why-toggle-row">
+                  <button className={`why-toggle ${whyVisible ? "active" : ""}`} type="button" onClick={() => setWhyVisible((current) => !current)}>
+                    <Eye size={16} />
+                    <span>{whyVisible ? "Скрыть объяснение" : "Почему так и что покажет поле"}</span>
+                  </button>
+                </div>
+                {whyVisible && (
+                  <div className="why-card">
+                    <strong>Почему так</strong>
+                    <span>{feedback.details?.why}</span>
+                    <span>{feedback.details?.howToFix}</span>
+                  </div>
+                )}
                 <div className="criteria-list" aria-label="Разбор решения">
                   {feedback.criteria.map((criterion) => (
                     <div className="criterion-row" key={criterion.key}>
@@ -1333,13 +1345,6 @@ export function App() {
                   <strong>{result.result === "correct" ? "Как закрепить" : "Как поправить"}</strong>
                   <span>{feedback.mainAdvice}</span>
                 </div>
-                {whyVisible && (
-                  <div className="why-card">
-                    <strong>Почему так</strong>
-                    <span>{feedback.details?.why}</span>
-                    <span>{feedback.details?.howToFix}</span>
-                  </div>
-                )}
               </>
             )}
 
@@ -1450,7 +1455,7 @@ export function App() {
         </aside>
       </section>
 
-      <div className="mobile-action-bar" aria-label="Действия тренировки">
+      <div className={`mobile-action-bar ${result ? "after-result" : ""}`} aria-label="Действия тренировки">
         {!result ? (
           <button className="primary" type="button" onClick={submitAnswer}>
             <Target size={18} />
@@ -1463,15 +1468,10 @@ export function App() {
           </button>
         )}
 
-        {!result ? (
+        {!result && (
           <button className="secondary" type="button" aria-label="Подсказка" onClick={() => setHintVisible(true)}>
             <Lightbulb size={18} />
             <span>Подсказка</span>
-          </button>
-        ) : (
-          <button className="secondary" type="button" aria-label="Показать почему" onClick={() => setWhyVisible((current) => !current)}>
-            <Eye size={18} />
-            <span>Почему</span>
           </button>
         )}
 

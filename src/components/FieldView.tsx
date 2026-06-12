@@ -8,7 +8,6 @@ type FieldViewProps = {
   goalkeeper: Point;
   goalkeeperFacing: number;
   result: CheckResult | null;
-  showAnalysis: boolean;
   showDimensions: boolean;
   visualHints: VisualHint[];
   wall?: WallConfig;
@@ -166,7 +165,7 @@ function WallFigure({ x, y, count, scale }: { x: number; y: number; count: numbe
   );
 }
 
-export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, showAnalysis, showDimensions, visualHints, wall, onGoalkeeperChange, onGoalkeeperFacingChange, onWallChange }: FieldViewProps) {
+export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, showDimensions, visualHints, wall, onGoalkeeperChange, onGoalkeeperFacingChange, onWallChange }: FieldViewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const shotAngleClipId = useRef(`shot-angle-clip-${Math.random().toString(36).slice(2)}`).current;
   const compactField = useCompactField();
@@ -329,8 +328,8 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
             <stop offset="62%" stopColor="#f4f4ec" />
             <stop offset="100%" stopColor="#cfcfc5" />
           </radialGradient>
-          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth={compactField ? 7 : 6} markerHeight={compactField ? 7 : 6} orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#f6c453" />
+          <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth={compactField ? 3.2 : 2.9} markerHeight={compactField ? 3.2 : 2.9} markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+            <path d="M 0 1.4 L 9.4 5 L 0 8.6 z" fill="#5bd2ff" />
           </marker>
           <clipPath id={shotAngleClipId} clipPathUnits="userSpaceOnUse">
             <polygon points={`${ball.x},${ball.y} ${leftSvg.x},${leftSvg.y} ${rightSvg.x},${rightSvg.y}`} />
@@ -423,8 +422,8 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
               </>
             )}
             <g clipPath={`url(#${shotAngleClipId})`}>
-              {showAnalysis && hasHint("TOO_DEEP_ZONE") && tooDeepZone && <ZoneCapsule zone={tooDeepZone} className={`danger-zone ${dangerZone === tooDeepZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
-              {showAnalysis && hasHint("TOO_HIGH_ZONE") && tooHighZone && <ZoneCapsule zone={tooHighZone} className={`danger-zone ${dangerZone === tooHighZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
+              {hasHint("TOO_DEEP_ZONE") && tooDeepZone && <ZoneCapsule zone={tooDeepZone} className={`danger-zone ${dangerZone === tooDeepZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
+              {hasHint("TOO_HIGH_ZONE") && tooHighZone && <ZoneCapsule zone={tooHighZone} className={`danger-zone ${dangerZone === tooHighZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
               {hasHint("ALMOST_ZONE") && almostZone && <ZoneCapsule zone={almostZone} className="almost-zone" fieldHeight={fieldHeight} />}
               {hasHint("CORRECT_ZONE") && optimalSvg && correctZone && <ZoneCapsule zone={correctZone} className="correct-zone" fieldHeight={fieldHeight} />}
             </g>

@@ -285,7 +285,7 @@ h2 {
 
 .legend-mark.arrow {
   border-top-style: solid;
-  border-top-color: #f6c453;
+  border-top-color: #5bd2ff;
 }
 
 .legend-label {
@@ -444,10 +444,11 @@ h2 {
 }
 
 .move-arrow {
-  stroke: #f6c453;
-  stroke-width: 1.05;
+  stroke: #5bd2ff;
+  stroke-width: 0.68;
   stroke-linecap: round;
-  filter: drop-shadow(0 0.7px 1.2px rgba(0, 0, 0, 0.48));
+  stroke-dasharray: 1.4 0.8;
+  filter: drop-shadow(0 0.5px 0.9px rgba(0, 0, 0, 0.4));
 }
 
 .correct-zone {
@@ -771,6 +772,31 @@ h2 {
 .why-card span {
   color: #dbeade;
   line-height: 1.38;
+}
+
+.why-toggle-row {
+  display: flex;
+  margin-top: 12px;
+}
+
+.why-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid rgba(91, 210, 255, 0.32);
+  border-radius: 8px;
+  color: #e8fff5;
+  background: rgba(91, 210, 255, 0.12);
+  font-weight: 800;
+}
+
+.why-toggle.active {
+  border-color: rgba(155, 228, 122, 0.38);
+  background: rgba(155, 228, 122, 0.12);
 }
 
 .criteria-list {
@@ -1866,7 +1892,7 @@ input:focus {
   }
 
   .move-arrow {
-    stroke-width: 1.35;
+    stroke-width: 0.82;
   }
 
   .keeper-facing-cone {
@@ -1911,6 +1937,10 @@ input:focus {
     background: rgba(7, 19, 13, 0.96);
     box-shadow: 0 -18px 42px rgba(0, 0, 0, 0.34);
     backdrop-filter: blur(12px);
+  }
+
+  .mobile-action-bar.after-result {
+    grid-template-columns: minmax(0, 1fr) 96px;
   }
 
   .mobile-action-bar button {
