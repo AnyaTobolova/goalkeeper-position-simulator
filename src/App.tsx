@@ -34,22 +34,27 @@ const onboardingCards = [
   {
     title: "Начало задания",
     visual: "position",
-    text: "Перетащи вратаря в правильную позицию перед ударом."
+    text: "Перетащи вратаря за точку ног. Именно эта белая точка решает, попал ли вратарь в нужную зону."
   },
   {
     title: "Корпус к мячу",
     visual: "body",
-    text: "Маленькая стрелка на вратаре показывает, куда развернут корпус. Её можно потянуть на поле или повернуть корпус кнопками в панели."
+    text: "Жёлтый указатель на вратаре показывает поворот корпуса. Его можно потянуть на поле или повернуть корпус кнопками в панели."
   },
   {
     title: "Зоны после ответа",
     visual: "zones",
-    text: "После проверки появляются зоны как на поле: зелёная - правильная позиция, жёлтая - почти, красная - опасно. Важна белая точка у ног вратаря."
+    text: "Зелёная зона - лучшая позиция, оранжевая - допустимо. Красная зона появляется только при опасной ошибке глубины."
+  },
+  {
+    title: "Стрелка поправки",
+    visual: "feedback",
+    text: "Голубая стрелка показывает, куда переставить точку ног. Она не про корпус: корпус показывает жёлтый указатель на вратаре."
   },
   {
     title: "Разбор после ответа",
-    visual: "feedback",
-    text: "После проверки смотри чеклист. Если нажать «Показать почему», на поле появятся красные зоны: слишком близко к воротам и слишком далеко от ворот."
+    visual: "analysis",
+    text: "После проверки смотри короткий вывод и чеклист. Кнопка «Почему так и что покажет поле» открывает объяснение прямо в разборе."
   },
   {
     title: "Стенка при штрафном",
@@ -230,21 +235,44 @@ function OnboardingVisual({ visual }: { visual: string }) {
             <rect className="lesson-stripe" x="0" y="54" width="160" height="18" />
             <line className="goal-line-strong" x1="58" y1="86" x2="102" y2="86" />
             <line className="analysis-line" x1="80" y1="86" x2="118" y2="18" />
-            <g transform="rotate(28 80 62)">
-              <rect className="danger-zone active" x="69" y="74" width="22" height="16" rx="8" />
-              <rect className="almost-zone" x="63" y="42" width="34" height="34" rx="17" />
-              <rect className="correct-zone" x="73" y="54" width="14" height="16" rx="7" />
-              <rect className="danger-zone active" x="67" y="20" width="26" height="16" rx="8" />
+            <g transform="rotate(28 84 60)">
+              <rect className="almost-zone" x="68" y="43" width="32" height="34" rx="16" />
+              <rect className="correct-zone" x="77" y="54" width="14" height="16" rx="7" />
             </g>
-            <LessonGoalkeeper x={80} y={62} facing={28} />
-            <circle className="keeper-foot-point" cx="80" cy="62" r="1.25" />
+            <line className="lesson-correction-line" x1="75" y1="67" x2="86" y2="61" />
+            <path className="lesson-correction-head" d="M 86 61 L 80.5 60 L 83.4 65.2 Z" />
+            <LessonGoalkeeper x={75} y={67} facing={28} />
+            <circle className="keeper-foot-point" cx="75" cy="67" r="1.25" />
+            <circle className="target-foot-point" cx="86" cy="61" r="1.45" />
             <LessonBall x={118} y={18} />
-            <text className="lesson-svg-label" x="95" y="34">слишком далеко</text>
-            <text className="lesson-svg-label" x="94" y="83">слишком глубоко</text>
+            <text className="lesson-svg-label" x="91" y="58">куда поправить</text>
           </svg>
-          <div className="lesson-why-button">
-            <Eye size={16} />
-            <span>Показать почему</span>
+          <div className="lesson-hint-legend">
+            <span>
+              <i className="legend-mark arrow" />
+              голубая стрелка
+            </span>
+            <span>
+              <i className="lesson-body-mark" />
+              жёлтый корпус
+            </span>
+          </div>
+        </div>
+      );
+    case "analysis":
+      return (
+        <div className="lesson-visual lesson-analysis" aria-hidden="true">
+          <div className="lesson-analysis-panel">
+            <span className="lesson-analysis-title">Разбор позиции</span>
+            <p>Ты правильно сместился к мячу, но стоишь слишком близко к линии ворот.</p>
+            <div className="lesson-why-button">
+              <Eye size={16} />
+              <span>Почему так и что покажет поле</span>
+            </div>
+            <div className="lesson-mini-criteria">
+              <span className="lesson-check good">линия хорошо</span>
+              <span className="lesson-check almost">глубину поправить</span>
+            </div>
           </div>
         </div>
       );
@@ -1413,7 +1441,7 @@ export function App() {
               ) : (
                 <button type="button" onClick={() => setWhyVisible((current) => !current)}>
                   <Eye size={18} />
-                  <span>{whyVisible ? "Скрыть почему" : "Показать почему"}</span>
+                  <span>{whyVisible ? "Скрыть объяснение" : "Почему так"}</span>
                 </button>
               )}
 
