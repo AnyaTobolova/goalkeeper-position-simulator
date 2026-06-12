@@ -1,5 +1,5 @@
 import type { CheckResult, ErrorType, Level, ScenarioType, VisualHint } from "./types";
-import { criteriaByScenarioType, getBallSide, type CriterionKey } from "./scenarios";
+import { criteriaByScenarioType, depthDangerErrors, getBallSide, type CriterionKey } from "./scenarios";
 
 export type FeedbackStatus = "excellent" | "almost" | "wrong" | "dangerous";
 export type CriterionStatus = "good" | "almost" | "bad" | "dangerous";
@@ -224,7 +224,7 @@ function isLineError(error: FeedbackErrorType, result: CheckResult) {
 
 function depthStatus(result: CheckResult, error: FeedbackErrorType): CriterionStatus {
   if (error === "TOO_HIGH" || error === "RUSHED_1V1") {
-    return "dangerous";
+    return result.result === "dangerous" ? "dangerous" : "bad";
   }
 
   if (error === "TOO_DEEP" || error === "PASSIVE_1V1") {
@@ -234,13 +234,13 @@ function depthStatus(result: CheckResult, error: FeedbackErrorType): CriterionSt
   return scoreStatus(result.evaluation.depthScore);
 }
 
-function readinessCriterion(error: FeedbackErrorType): Criterion {
+function readinessCriterion(error: FeedbackErrorType, result: CheckResult): Criterion {
   if (error === "ALMOST") {
     return { key: "readiness", label: "Готовность", status: "good", text: readinessCriterionTexts.good };
   }
 
   if (error === "TOO_HIGH" || error === "RUSHED_1V1") {
-    return { key: "readiness", label: "Готовность", status: "dangerous", text: "сложно успеть на удар" };
+    return { key: "readiness", label: "Готовность", status: result.result === "dangerous" ? "dangerous" : "bad", text: "сложно успеть на удар" };
   }
 
   if (error === "TOO_DEEP" || error === "PASSIVE_1V1") {
@@ -314,19 +314,19 @@ function criterionForKey(key: CriterionKey, result: CheckResult, level: Level): 
         text: farPostCriterionTexts[error === "OVERPROTECTS_NEAR_POST" ? "bad" : "good"]
       };
     case "readiness":
-      return readinessCriterion(error);
+      return readinessCriterion(error, result);
     case "tooHighRisk":
       return {
         key,
         label: "Риск переброса",
-        status: error === "TOO_HIGH" || error === "RUSHED_1V1" ? "dangerous" : "good",
+        status: error === "TOO_HIGH" || error === "RUSHED_1V1" ? (result.result === "dangerous" ? "dangerous" : "bad") : "good",
         text: error === "TOO_HIGH" || error === "RUSHED_1V1" ? "ворота за спиной" : "выход под контролем"
       };
     case "controlledExit":
       return {
         key,
         label: "Контроль выхода",
-        status: error === "RUSHED_1V1" || error === "PASSIVE_1V1" ? "dangerous" : currentDepthStatus,
+        status: error === "RUSHED_1V1" || error === "PASSIVE_1V1" ? (result.result === "dangerous" ? "dangerous" : "bad") : currentDepthStatus,
         text: error === "PASSIVE_1V1" ? "слишком пассивно" : error === "RUSHED_1V1" ? "выход слишком резкий" : "угол сокращён"
       };
     case "adjustment":
@@ -440,11 +440,11 @@ function buildVisualHints(result: CheckResult, level: Level, criteria: Criterion
     hints.add("FAR_POST_SECTOR");
   }
 
-  if (error === "TOO_HIGH" || error === "RUSHED_1V1") {
+  if (depthDangerErrors.has(error) && (error === "TOO_HIGH" || error === "RUSHED_1V1")) {
     hints.add("TOO_HIGH_ZONE");
   }
 
-  if (error === "TOO_DEEP" || error === "PASSIVE_1V1") {
+  if (depthDangerErrors.has(error) && (error === "TOO_DEEP" || error === "PASSIVE_1V1")) {
     hints.add("TOO_DEEP_ZONE");
   }
 

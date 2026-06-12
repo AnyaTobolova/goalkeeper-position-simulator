@@ -355,6 +355,16 @@ function fieldLegendItems(visualHints: VisualHint[]) {
   ].filter(Boolean) as { kind: string; label: string; text: string }[];
 }
 
+function criteriaLegendItems(criteria: { status: string }[]) {
+  const statuses = new Set(criteria.map((criterion) => criterion.status));
+
+  return [
+    statuses.has("good") && { kind: "correct", text: "правильно" },
+    (statuses.has("almost") || statuses.has("bad")) && { kind: "almost", text: "поправить" },
+    statuses.has("dangerous") && { kind: "danger", text: "опасно" }
+  ].filter(Boolean) as { kind: string; text: string }[];
+}
+
 function getNextLevelIndex(currentIndex: number, progress: Progress) {
   const repeatIndex = levels.findIndex((level, index) => {
     const item = progress[level.id];
@@ -1309,20 +1319,14 @@ export function App() {
                     </div>
                   ))}
                 </div>
-                {whyVisible && (
+                {whyVisible && criteriaLegendItems(feedback.criteria).length > 0 && (
                   <div className="zone-legend" aria-label="Обозначения зон">
-                    <span>
-                      <i className="legend-dot correct" />
-                      правильно
-                    </span>
-                    <span>
-                      <i className="legend-dot almost" />
-                      почти
-                    </span>
-                    <span>
-                      <i className="legend-dot danger" />
-                      опасно
-                    </span>
+                    {criteriaLegendItems(feedback.criteria).map((item) => (
+                      <span key={item.kind}>
+                        <i className={`legend-dot ${item.kind}`} />
+                        {item.text}
+                      </span>
+                    ))}
                   </div>
                 )}
                 <div className="how-card">

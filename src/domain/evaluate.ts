@@ -65,6 +65,10 @@ function isDangerousError(errorType?: ErrorType) {
   return errorType === "TOO_HIGH" || errorType === "NEAR_POST_OPEN" || errorType === "RUSHED_1V1" || errorType === "NO_BALL_VISIBILITY";
 }
 
+function isDepthPositionError(errorType?: ErrorType) {
+  return errorType === "TOO_HIGH" || errorType === "TOO_DEEP" || errorType === "RUSHED_1V1" || errorType === "PASSIVE_1V1";
+}
+
 export function evaluateGoalkeeper(
   goalkeeperPercent: Point,
   level: Level,
@@ -269,9 +273,12 @@ export function checkAnswer(goalkeeper: Point, level: Level, pitch: PitchConfig,
   const wellOriented = evaluation.orientationScore >= 72;
   const wallReady = !level.freeKick || ((evaluation.wallCountScore ?? 100) >= 85 && (evaluation.wallPositionScore ?? 100) >= 80);
   const componentsReady = evaluation.lineScore >= 72 && evaluation.depthScore >= 72 && evaluation.nearPostScore >= 68 && wellOriented;
-  const dangerous = zoneClassification.status === "dangerous" || (isDangerousError(evaluation.mainErrorType) && !componentsReady);
+  const acceptableZone = inCorrectZone || zoneClassification.status === "almost";
+  const dangerous =
+    !acceptableZone &&
+    (zoneClassification.status === "dangerous" || (!isDepthPositionError(evaluation.mainErrorType) && isDangerousError(evaluation.mainErrorType) && !componentsReady));
 
-  if (inCorrectZone && componentsReady && evaluation.total >= 85 && wallReady && !dangerous) {
+  if (inCorrectZone && wallReady && !dangerous) {
     return {
       result: "correct",
       score: Math.max(85, evaluation.total),
@@ -292,7 +299,7 @@ export function checkAnswer(goalkeeper: Point, level: Level, pitch: PitchConfig,
     };
   }
 
-  if (!evaluation.outsideShotAngle && (zoneClassification.status === "almost" || evaluation.total >= 65 || inCorrectZone || (level.freeKick && wallReady))) {
+  if (!evaluation.outsideShotAngle && (zoneClassification.status === "almost" || inCorrectZone || (level.freeKick && wallReady && zoneClassification.status !== "needs_fix"))) {
     return {
       result: "almost",
       score: evaluation.total,

@@ -15,7 +15,7 @@ export type LocalPosition = {
 };
 
 export type ZoneClassification = {
-  status: "correct" | "almost" | "wrong" | "dangerous";
+  status: "correct" | "almost" | "needs_fix" | "wrong" | "dangerous";
   errorType?: ErrorType;
 };
 
@@ -228,12 +228,26 @@ export function isAlmost(local: LocalPosition, cfg: ZoneConfig) {
   return local.u >= cfg.idealDepth - cfg.backSlack && local.u <= cfg.idealDepth + cfg.forwardSlack && Math.abs(local.v) <= cfg.sideSlack;
 }
 
+export function warningDepthBuffer(cfg: ZoneConfig) {
+  return Math.max(0.8, Math.min(1.8, cfg.correctDepthHalf * 0.65));
+}
+
+export function isWarningTooHigh(local: LocalPosition, cfg: ZoneConfig) {
+  const warningEnd = cfg.idealDepth + cfg.forwardSlack + warningDepthBuffer(cfg);
+  return local.u > cfg.idealDepth + cfg.forwardSlack && local.u <= warningEnd && Math.abs(local.v) <= cfg.sideSlack + 0.8;
+}
+
+export function isWarningTooDeep(local: LocalPosition, cfg: ZoneConfig) {
+  const warningStart = cfg.idealDepth - cfg.backSlack - warningDepthBuffer(cfg);
+  return local.u < cfg.idealDepth - cfg.backSlack && local.u >= warningStart && Math.abs(local.v) <= cfg.sideSlack + 0.8;
+}
+
 export function isTooHigh(local: LocalPosition, cfg: ZoneConfig) {
-  return local.u > cfg.idealDepth + cfg.forwardSlack && Math.abs(local.v) <= cfg.sideSlack + 0.8;
+  return local.u > cfg.idealDepth + cfg.forwardSlack + warningDepthBuffer(cfg) && Math.abs(local.v) <= cfg.sideSlack + 0.8;
 }
 
 export function isTooDeep(local: LocalPosition, cfg: ZoneConfig) {
-  return local.u < cfg.idealDepth - cfg.backSlack && Math.abs(local.v) <= cfg.sideSlack + 0.8;
+  return local.u < cfg.idealDepth - cfg.backSlack - warningDepthBuffer(cfg) && Math.abs(local.v) <= cfg.sideSlack + 0.8;
 }
 
 export function isTooLeft(local: LocalPosition, cfg: ZoneConfig) {
@@ -266,16 +280,24 @@ export function classifyLocalPosition(local: LocalPosition, cfg: ZoneConfig, ins
     return { status: "correct" };
   }
 
-  if (isTooHigh(local, cfg)) {
-    return { status: "dangerous", errorType: "TOO_HIGH" };
-  }
-
   if (isAlmost(local, cfg)) {
     return { status: "almost" };
   }
 
+  if (isWarningTooHigh(local, cfg)) {
+    return { status: "needs_fix", errorType: "TOO_HIGH" };
+  }
+
+  if (isWarningTooDeep(local, cfg)) {
+    return { status: "needs_fix", errorType: "TOO_DEEP" };
+  }
+
+  if (isTooHigh(local, cfg)) {
+    return { status: "dangerous", errorType: "TOO_HIGH" };
+  }
+
   if (isTooDeep(local, cfg)) {
-    return { status: "wrong", errorType: "TOO_DEEP" };
+    return { status: "dangerous", errorType: "TOO_DEEP" };
   }
 
   if (isTooLeft(local, cfg)) {
@@ -345,6 +367,9 @@ export function buildPositionZones(level: Level, pitch: PitchConfig) {
   const sideSlack = Math.max(correctSideHalf + 0.22, correctSideHalf * 1.16, cappedSideHalf(ball, center, axes, pitch, almostUMin, almostUMax, desiredSideSlack, 0.5));
   const cfg = { ...baseCfg, backSlack: almostDepthHalf, forwardSlack: almostDepthHalf, correctSideHalf, sideSlack };
   const ideal = getIdealPoint(center, axes, cfg.idealDepth);
+  const warningDepth = warningDepthBuffer(cfg);
+  const tooDeepMax = cfg.idealDepth - cfg.backSlack - warningDepth;
+  const tooHighMin = cfg.idealDepth + cfg.forwardSlack + warningDepth;
 
   return {
     cfg,
@@ -353,7 +378,7 @@ export function buildPositionZones(level: Level, pitch: PitchConfig) {
     ideal,
     correct: localZoneToPercent(center, axes, pitch, correctUMin, correctUMax, correctSideHalf),
     almost: localZoneToPercent(center, axes, pitch, almostUMin, almostUMax, sideSlack),
-    tooDeep: cappedZoneToPercent(center, axes, pitch, ball, Math.max(0, cfg.idealDepth - cfg.backSlack - 4), cfg.idealDepth - cfg.backSlack, cfg.sideSlack + 0.8),
-    tooHigh: cappedZoneToPercent(center, axes, pitch, ball, cfg.idealDepth + cfg.forwardSlack, cfg.idealDepth + cfg.forwardSlack + 4, cfg.sideSlack + 0.8)
+    tooDeep: cappedZoneToPercent(center, axes, pitch, ball, Math.max(0, tooDeepMax - 4), tooDeepMax, cfg.sideSlack + 0.8),
+    tooHigh: cappedZoneToPercent(center, axes, pitch, ball, tooHighMin, tooHighMin + 4, cfg.sideSlack + 0.8)
   };
 }

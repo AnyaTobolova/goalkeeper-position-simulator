@@ -432,8 +432,9 @@ h2 {
 
 .move-arrow {
   stroke: #f6c453;
-  stroke-width: 0.8;
+  stroke-width: 1.05;
   stroke-linecap: round;
+  filter: drop-shadow(0 0.7px 1.2px rgba(0, 0, 0, 0.48));
 }
 
 .correct-zone {
@@ -592,20 +593,25 @@ h2 {
 }
 
 .keeper-facing-mark {
-  fill: rgba(255, 255, 255, 0.78);
-  stroke: rgba(7, 19, 13, 0.56);
-  stroke-width: 0.16;
+  fill: #f6c453;
+  stroke: rgba(7, 19, 13, 0.74);
+  stroke-width: 0.2;
 }
 
 .keeper-facing-cone {
-  fill: rgba(255, 255, 255, 0.08);
-  stroke: rgba(255, 255, 255, 0.32);
-  stroke-width: 0.16;
+  fill: rgba(246, 196, 83, 0.18);
+  stroke: rgba(246, 196, 83, 0.9);
+  stroke-width: 0.22;
 }
 
 .keeper-direction {
   cursor: grab;
   pointer-events: visiblePainted;
+}
+
+.keeper-direction-hit {
+  fill: rgba(246, 196, 83, 0.001);
+  stroke: none;
 }
 
 .keeper-direction:active {
@@ -638,15 +644,6 @@ h2 {
 }
 
 .wall-hit:active {
-  cursor: grabbing;
-}
-
-.keeper-rotate-hit {
-  fill: transparent;
-  cursor: grab;
-}
-
-.keeper-rotate-hit:active {
   cursor: grabbing;
 }
 
@@ -1833,6 +1830,25 @@ input:focus {
   .field {
     height: clamp(330px, 56svh, 460px);
     min-height: 0;
+  }
+
+  .goal-post,
+  .goal-backbar,
+  .goal-side-net,
+  .goal-front-frame {
+    stroke-width: 1.28;
+  }
+
+  .goal-line-strong {
+    stroke-width: 0.72;
+  }
+
+  .move-arrow {
+    stroke-width: 1.35;
+  }
+
+  .keeper-facing-cone {
+    stroke-width: 0.28;
   }
 
   .side {

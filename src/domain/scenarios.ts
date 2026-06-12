@@ -23,6 +23,11 @@ export type CriterionKey =
 
 export type BallSide = "left" | "center" | "right";
 
+export const depthRelatedCriteria = new Set<CriterionKey>(["depth", "tooHighRisk", "controlledExit", "goalControl", "startingPosition", "spaceControl"]);
+export const depthDangerErrors = new Set(["TOO_DEEP", "TOO_HIGH", "PASSIVE_1V1", "RUSHED_1V1"]);
+
+// Red field zones are scenario explanations for depth errors only.
+// Line, near-post, wall, visibility and repositioning mistakes use their own visual hints.
 export const criteriaByScenarioType: Record<ScenarioType, CriterionKey[]> = {
   central_shot: ["line", "depth", "shootingAngle", "readiness"],
   side_shot: ["line", "depth", "nearPost", "readiness"],

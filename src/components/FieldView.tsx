@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CheckResult, Level, OrientedZone, PitchConfig, Point, VisualHint, WallConfig, Zone } from "../domain/types";
 import { fromMeters, goalCenter, leftPost, rightPost, toMeters } from "../domain/geometry";
 
@@ -60,11 +60,27 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-function PlayerFigure({ x, y, role, hasBall }: { x: number; y: number; role: "attacker" | "defender"; hasBall?: boolean }) {
+function useCompactField() {
+  const [compact, setCompact] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 820px), (pointer: coarse)");
+    const update = () => setCompact(query.matches);
+
+    update();
+    query.addEventListener("change", update);
+
+    return () => query.removeEventListener("change", update);
+  }, []);
+
+  return compact;
+}
+
+function PlayerFigure({ x, y, role, hasBall, scale }: { x: number; y: number; role: "attacker" | "defender"; hasBall?: boolean; scale: number }) {
   const className = role === "attacker" ? "figure attacker-figure" : "figure defender-figure";
 
   return (
-    <g className={className} transform={`translate(${x} ${y}) scale(0.7)`}>
+    <g className={className} transform={`translate(${x} ${y}) scale(${scale})`}>
       <g transform="translate(0 -3.85)">
         {hasBall && <circle className="player-focus-ring" cx="0" cy="1.9" r="1.55" />}
         <ellipse className="figure-shadow" cx="0" cy="3.8" rx="1.75" ry="0.55" />
@@ -85,17 +101,19 @@ function GoalkeeperFigure({
   x,
   y,
   facing,
+  scale,
   onDirectionPointerDown,
   onDirectionPointerMove
 }: {
   x: number;
   y: number;
   facing: number;
+  scale: number;
   onDirectionPointerDown: (event: React.PointerEvent<SVGGElement>) => void;
   onDirectionPointerMove: (event: React.PointerEvent<SVGGElement>) => void;
 }) {
   return (
-    <g className="goalkeeper-figure" transform={`translate(${x} ${y}) scale(0.72)`}>
+    <g className="goalkeeper-figure" transform={`translate(${x} ${y}) scale(${scale})`}>
       <g transform="translate(0 -3.85)">
         <ellipse className="figure-shadow" cx="0" cy="3.9" rx="1.9" ry="0.55" />
         <g
@@ -104,8 +122,9 @@ function GoalkeeperFigure({
           onPointerDown={onDirectionPointerDown}
           onPointerMove={onDirectionPointerMove}
         >
-          <path className="keeper-facing-cone" d="M 0 -5.2 L -1.35 -2.2 L 1.35 -2.2 Z" />
-          <path className="keeper-facing-mark" d="M 0 -5.1 L -0.72 -4.05 L 0.72 -4.05 Z" />
+          <circle className="keeper-direction-hit" cx="0" cy="-4.05" r="4.2" />
+          <path className="keeper-facing-cone" d="M 0 -6.15 L -2 -2.25 L 2 -2.25 Z" />
+          <path className="keeper-facing-mark" d="M 0 -5.85 L -0.92 -4.35 L 0.92 -4.35 Z" />
         </g>
         <circle className="figure-head" cx="0" cy="-3.25" r="0.78" />
         <path className="figure-hair" d="M -0.7 -3.3 Q 0 -4.08 0.76 -3.3 Q 0.2 -3.6 -0.7 -3.3" />
@@ -122,12 +141,12 @@ function GoalkeeperFigure({
   );
 }
 
-function WallFigure({ x, y, count }: { x: number; y: number; count: number }) {
+function WallFigure({ x, y, count, scale }: { x: number; y: number; count: number; scale: number }) {
   const spacing = 1.65;
   const start = -((count - 1) * spacing) / 2;
 
   return (
-    <g className="wall-figure" transform={`translate(${x} ${y}) scale(0.62)`}>
+    <g className="wall-figure" transform={`translate(${x} ${y}) scale(${scale})`}>
       {Array.from({ length: count }).map((_, index) => {
         const playerX = start + index * spacing;
 
@@ -150,6 +169,7 @@ function WallFigure({ x, y, count }: { x: number; y: number; count: number }) {
 export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, showAnalysis, showDimensions, visualHints, wall, onGoalkeeperChange, onGoalkeeperFacingChange, onWallChange }: FieldViewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const shotAngleClipId = useRef(`shot-angle-clip-${Math.random().toString(36).slice(2)}`).current;
+  const compactField = useCompactField();
   const fieldHeight = Math.max(64, (pitch.fieldLength / pitch.fieldWidth) * viewBoxWidth);
   const scaleX = viewBoxWidth / pitch.fieldWidth;
   const scaleY = fieldHeight / pitch.fieldLength;
@@ -178,20 +198,24 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
   const box = pitch.markings;
   const goalSvgX = (pitch.fieldWidth / 2 - pitch.goalWidth / 2) * scaleX;
   const goalSvgWidth = pitch.goalWidth * scaleX;
-  const goalDepth = Math.max(5.8, Math.min(9, goalSvgWidth * 0.72));
+  const playerScale = compactField ? 0.92 : 0.78;
+  const goalkeeperScale = compactField ? 1.02 : 0.84;
+  const wallScale = compactField ? 0.78 : 0.66;
+  const goalDepth = Math.max(compactField ? 7.2 : 5.8, Math.min(compactField ? 10.5 : 9, goalSvgWidth * (compactField ? 0.88 : 0.72)));
   const playerSvgPoints = level.players.map((player) => percentToSvg(player));
   const importantY = [ball.y, keeperSvg.y, ...(wallSvg ? [wallSvg.y] : []), ...playerSvgPoints.map((point) => point.y)];
   const importantX = [goalSvgX, goalSvgX + goalSvgWidth, ball.x, keeperSvg.x, ...(wallSvg ? [wallSvg.x] : []), ...playerSvgPoints.map((point) => point.x)];
-  const minViewBoxWidth = 56;
-  const rawFocusLeft = Math.min(...importantX) - 12;
-  const rawFocusRight = Math.max(...importantX) + 12;
+  const minViewBoxWidth = compactField ? 46 : 56;
+  const focusPadding = compactField ? 8 : 12;
+  const rawFocusLeft = Math.min(...importantX) - focusPadding;
+  const rawFocusRight = Math.max(...importantX) + focusPadding;
   const rawFocusWidth = rawFocusRight - rawFocusLeft;
-  const focusWidth = Math.min(viewBoxWidth, Math.max(minViewBoxWidth, rawFocusWidth));
+  const focusWidth = Math.min(compactField && rawFocusWidth <= 84 ? 84 : viewBoxWidth, Math.max(minViewBoxWidth, rawFocusWidth));
   const focusCenterX = clamp((rawFocusLeft + rawFocusRight) / 2, focusWidth / 2, viewBoxWidth - focusWidth / 2);
   const focusLeft = focusCenterX - focusWidth / 2;
-  const focusTop = Math.max(0, Math.min(...importantY) - 10);
-  const focusBottom = fieldHeight + goalDepth + 6;
-  const focusHeight = Math.max(42, focusBottom - focusTop);
+  const focusTop = Math.max(0, Math.min(...importantY) - (compactField ? 7 : 10));
+  const focusBottom = fieldHeight + goalDepth + (compactField ? 3 : 6);
+  const focusHeight = Math.max(compactField ? 36 : 42, focusBottom - focusTop);
   const viewBox = `${focusLeft - margin} ${focusTop - margin} ${focusWidth + margin * 2} ${focusHeight + margin * 2}`;
 
   const visiblePenalty = useMemo(() => {
@@ -284,12 +308,6 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
     onWallChange({ ...wall, x: clamp(point.x, 10, 90), y: clamp(point.y, 1, 38) });
   }
 
-  const facingHandleRadius = 7.2;
-  const facingHandle = {
-    x: keeperSvg.x + Math.sin((goalkeeperFacing * Math.PI) / 180) * facingHandleRadius,
-    y: keeperSvg.y - Math.cos((goalkeeperFacing * Math.PI) / 180) * facingHandleRadius
-  };
-
   return (
     <div className="field-shell">
       <svg ref={svgRef} className="field" viewBox={viewBox} role="img" aria-label="Футбольное поле">
@@ -311,7 +329,7 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
             <stop offset="62%" stopColor="#f4f4ec" />
             <stop offset="100%" stopColor="#cfcfc5" />
           </radialGradient>
-          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth={compactField ? 7 : 6} markerHeight={compactField ? 7 : 6} orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="#f6c453" />
           </marker>
           <clipPath id={shotAngleClipId} clipPathUnits="userSpaceOnUse">
@@ -413,7 +431,7 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
             {hasHint("MOVE_ARROW") && optimalSvg && (
               <>
                 <line className="move-arrow" x1={keeperSvg.x} y1={keeperSvg.y} x2={optimalSvg.x} y2={optimalSvg.y} markerEnd="url(#arrow)" />
-                <circle className="target-foot-point" cx={optimalSvg.x} cy={optimalSvg.y} r="0.95" />
+                <circle className="target-foot-point" cx={optimalSvg.x} cy={optimalSvg.y} r={compactField ? 1.25 : 0.95} />
               </>
             )}
             {hasHint("BALL_VISIBILITY_LINE") && (
@@ -441,7 +459,7 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
 
         {level.players.map((player) => {
           const p = percentToSvg(player);
-          return <PlayerFigure key={player.id} x={p.x} y={p.y} role={player.role} hasBall={player.hasBall} />;
+          return <PlayerFigure key={player.id} x={p.x} y={p.y} role={player.role} hasBall={player.hasBall} scale={playerScale} />;
         })}
 
         {wall && wall.count > 0 && wallSvg && (
@@ -456,11 +474,11 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
               onPointerDown={handleWallPointerDown}
               onPointerMove={handleWallPointerMove}
             />
-            <WallFigure x={wallSvg.x} y={wallSvg.y} count={wall.count} />
+            <WallFigure x={wallSvg.x} y={wallSvg.y} count={wall.count} scale={wallScale} />
           </>
         )}
 
-        <g className="ball" transform={`translate(${ball.x} ${ball.y})`}>
+        <g className="ball" transform={`translate(${ball.x} ${ball.y}) scale(${compactField ? 1.18 : 1})`}>
           <circle className="ball-base" cx="0" cy="0" r="1.28" />
           <path className="ball-patch" d="M 0 -0.7 L 0.66 -0.2 L 0.42 0.6 L -0.42 0.6 L -0.66 -0.2 Z" />
           <path className="ball-stitch" d="M 0 -0.7 L 0 -1.2 M 0.66 -0.2 L 1.16 -0.38 M 0.42 0.6 L 0.74 1.04 M -0.42 0.6 L -0.74 1.04 M -0.66 -0.2 L -1.16 -0.38" />
@@ -470,26 +488,19 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
           className="goalkeeper-hit"
           cx={keeperSvg.x}
           cy={keeperSvg.y}
-          r="4.2"
+          r={compactField ? 6.6 : 4.8}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
-        />
-        <circle
-          className="keeper-rotate-hit"
-          cx={facingHandle.x}
-          cy={facingHandle.y}
-          r="3"
-          onPointerDown={handleRotatePointerDown}
-          onPointerMove={handleRotatePointerMove}
         />
         <GoalkeeperFigure
           x={keeperSvg.x}
           y={keeperSvg.y}
           facing={goalkeeperFacing}
+          scale={goalkeeperScale}
           onDirectionPointerDown={handleRotatePointerDown}
           onDirectionPointerMove={handleRotatePointerMove}
         />
-        <circle className={footInsideTarget ? "keeper-foot-point" : "keeper-foot-point miss"} cx={keeperSvg.x} cy={keeperSvg.y} r="0.62" />
+        <circle className={footInsideTarget ? "keeper-foot-point" : "keeper-foot-point miss"} cx={keeperSvg.x} cy={keeperSvg.y} r={compactField ? 0.82 : 0.66} />
 
         {showDimensions && (
           <g className="dimensions">
