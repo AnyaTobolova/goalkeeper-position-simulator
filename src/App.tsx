@@ -1253,7 +1253,7 @@ export function App() {
               <span className="badge">{categoryTitle(level.category)}</span>
               <h2>{level.title}</h2>
             </div>
-            <div className="result-summary">
+            <div className={`result-summary ${visibleFieldLegend.length > 0 ? "with-legend" : ""}`}>
               <div className={`result-pill ${resultClass(result)}`}>{resultLabel(result)}</div>
               {visibleFieldLegend.length > 0 && (
                 <div className="result-legend" aria-label="Обозначения на поле">

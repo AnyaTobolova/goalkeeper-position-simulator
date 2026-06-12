@@ -208,13 +208,26 @@ h2 {
   display: grid;
   justify-items: end;
   gap: 8px;
-  min-width: min(330px, 42vw);
+  min-width: 0;
+}
+
+.result-summary.with-legend {
+  grid-template-columns: minmax(300px, 410px) auto;
+  grid-template-areas: "legend action";
+  align-items: start;
+  column-gap: 12px;
+  min-width: min(560px, 52vw);
+}
+
+.result-summary.with-legend .result-pill {
+  grid-area: action;
 }
 
 .result-legend {
+  grid-area: legend;
   display: grid;
   gap: 4px;
-  width: min(330px, 42vw);
+  width: min(410px, 36vw);
   padding: 8px 10px;
   border: 1px solid rgba(219, 244, 222, 0.14);
   border-radius: 8px;
@@ -1823,6 +1836,15 @@ input:focus {
 
   .result-summary,
   .result-legend {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .result-summary.with-legend {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "action"
+      "legend";
     width: 100%;
     min-width: 0;
   }
