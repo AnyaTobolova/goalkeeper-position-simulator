@@ -1,5 +1,6 @@
 import type { CheckResult, ErrorType, EvaluationScore, Level, PitchConfig, Point, WallConfig, Zone } from "./types";
 import {
+  clamp,
   distance,
   distancePointToLine,
   facingAngleToBall,
@@ -7,12 +8,11 @@ import {
   goalCenter,
   isInsideZone,
   leftPost,
-  optimalDepth,
-  pointOnBallLine,
   rightPost,
-  toMeters,
-  zoneAround
+  toMeters
 } from "./geometry";
+import { buildPositionZones, classifyLocalPosition, isCorrect, isInsideShotAngle, toLocal } from "./positionZones";
+import { getBallSide, inferScenarioType } from "./scenarios";
 
 function scoreByDistance(value: number, good: number, bad: number) {
   if (value <= good) {
@@ -61,6 +61,10 @@ function zoneCenter(zone: Zone): Point {
   };
 }
 
+function isDangerousError(errorType?: ErrorType) {
+  return errorType === "TOO_HIGH" || errorType === "NEAR_POST_OPEN" || errorType === "RUSHED_1V1" || errorType === "NO_BALL_VISIBILITY";
+}
+
 export function evaluateGoalkeeper(
   goalkeeperPercent: Point,
   level: Level,
@@ -71,18 +75,26 @@ export function evaluateGoalkeeper(
   const ball = toMeters(level.ball, pitch);
   const goalkeeper = toMeters(goalkeeperPercent, pitch);
   const center = goalCenter(pitch);
-  const lineDistance = distancePointToLine(goalkeeper, center, ball);
-  const levelKind = level.category === "one_v_one" ? "one_v_one" : level.category === "defender_pressure" ? "defender" : "normal";
-  const depth = optimalDepth(ball, pitch, levelKind);
-  const optimal = pointOnBallLine(ball, pitch, depth);
-  const optimalPercent = fromMeters(optimal, pitch);
-  const correctZone = level.correctZone ?? zoneAround(optimal, pitch, Math.max(0.45, pitch.goalWidth * 0.1), Math.max(0.45, pitch.goalWidth * 0.1));
-  const targetPercent = level.correctZone ? zoneCenter(correctZone) : optimalPercent;
+  const scenarioType = inferScenarioType(level, pitch);
+  const positionZones = buildPositionZones(level, pitch);
+  const localPosition = toLocal(goalkeeper, center, positionZones.axes);
+  const insideShotAngle = isInsideShotAngle(goalkeeper, ball, pitch);
+  const zoneClassification = classifyLocalPosition(localPosition, positionZones.cfg, insideShotAngle);
+  const lineDistance = Math.abs(localPosition.v);
+  const optimal = positionZones.ideal;
+  const targetPercent = fromMeters(optimal, pitch);
   const targetPoint = toMeters(targetPercent, pitch);
-  const depthDiff = Math.abs(goalkeeper.y - optimal.y);
-  let lineScore = scoreByDistance(lineDistance, Math.max(0.85, pitch.goalWidth * 0.13), Math.max(4, pitch.goalWidth * 0.75));
-  let depthScore = scoreByDistance(depthDiff, Math.max(1.1, pitch.goalWidth * 0.18), Math.max(5, pitch.goalWidth * 0.95));
-  const side = Math.sign(ball.x - center.x);
+  const depthDiff = Math.abs(localPosition.u - positionZones.cfg.idealDepth);
+  const correctZone = level.correctZone ?? {
+    xMin: positionZones.correct.center.x - positionZones.correct.sideHalf,
+    xMax: positionZones.correct.center.x + positionZones.correct.sideHalf,
+    yMin: positionZones.correct.center.y - positionZones.correct.depthHalf,
+    yMax: positionZones.correct.center.y + positionZones.correct.depthHalf
+  };
+  let lineScore = scoreByDistance(lineDistance, positionZones.cfg.correctSideHalf, positionZones.cfg.sideSlack + 2.4);
+  let depthScore = scoreByDistance(depthDiff, positionZones.cfg.correctDepthHalf, Math.max(positionZones.cfg.backSlack, positionZones.cfg.forwardSlack) + 3.2);
+  const ballSide = getBallSide(ball, center);
+  const side = ballSide === "center" ? 0 : ballSide === "left" ? -1 : 1;
   const nearPost = side < 0 ? leftPost(pitch) : rightPost(pitch);
   const nearPostDistance = distancePointToLine(goalkeeper, nearPost, ball);
   let nearPostScore = side === 0 ? 100 : scoreByDistance(nearPostDistance, pitch.goalWidth * 0.38, pitch.goalWidth * 1.15);
@@ -95,21 +107,27 @@ export function evaluateGoalkeeper(
   const notes: string[] = [];
   let mainErrorType: ErrorType | undefined;
 
-  if (level.correctZone && level.evaluationMode === "zone") {
-    const targetDistance = distance(goalkeeper, targetPoint);
-    lineScore = scoreByDistance(Math.abs(goalkeeper.x - targetPoint.x), Math.max(0.45, pitch.goalWidth * 0.08), Math.max(3, pitch.goalWidth * 0.55));
-    depthScore = scoreByDistance(Math.abs(goalkeeper.y - targetPoint.y), Math.max(0.45, pitch.goalWidth * 0.08), Math.max(3, pitch.goalWidth * 0.55));
-    nearPostScore = scoreByDistance(targetDistance, Math.max(0.75, pitch.goalWidth * 0.14), Math.max(4, pitch.goalWidth * 0.8));
-  }
-
-  if (lineScore < 55) {
+  if (zoneClassification.errorType === "TOO_LEFT" || zoneClassification.errorType === "TOO_RIGHT") {
+    mainErrorType = detectHorizontalError(goalkeeperPercent, targetPercent);
+    lineScore = Math.min(lineScore, insideShotAngle ? lineScore : 54);
+    nearPostScore = Math.min(nearPostScore, insideShotAngle ? nearPostScore : 52);
+    notes.push("Смещение не совпадает с линией мяча.");
+  } else if (lineScore < 55) {
     mainErrorType = Math.abs(goalkeeperPercent.x - 50) < 4 ? "TOO_CENTRAL" : detectHorizontalError(goalkeeperPercent, targetPercent);
     notes.push("Смещение не совпадает с линией мяча.");
   }
 
-  if (depthScore < 55) {
+  if (zoneClassification.errorType === "TOO_HIGH") {
+    depthScore = Math.min(depthScore, 42);
+    mainErrorType = scenarioType === "one_v_one" || scenarioType === "one_v_one_loose_touch" ? "RUSHED_1V1" : "TOO_HIGH";
+    notes.push("Позиция слишком высокая: ворота остаются за спиной.");
+  } else if (zoneClassification.errorType === "TOO_DEEP") {
+    depthScore = Math.min(depthScore, 48);
+    mainErrorType = scenarioType === "one_v_one" || scenarioType === "one_v_one_loose_touch" ? "PASSIVE_1V1" : "TOO_DEEP";
+    notes.push("Позиция слишком глубокая: нападающему видно больше ворот.");
+  } else if (depthScore < 55) {
     mainErrorType = goalkeeper.y < targetPoint.y ? "TOO_DEEP" : "TOO_HIGH";
-    notes.push(goalkeeper.y < targetPoint.y ? "Позиция слишком глубокая." : "Позиция слишком высокая.");
+    notes.push(goalkeeper.y < targetPoint.y ? "Глубину нужно выбрать смелее." : "Глубину нужно выбрать спокойнее.");
   }
 
   if (nearPostScore < 55 && Math.abs(ball.x - center.x) > pitch.goalWidth * 0.8) {
@@ -117,26 +135,32 @@ export function evaluateGoalkeeper(
     notes.push("Ближний угол открыт.");
   }
 
-  if (level.category === "one_v_one") {
-    if (goalkeeper.y < optimal.y * 0.55) {
+  if (side !== 0 && distance(goalkeeper, nearPost) < Math.max(0.55, pitch.goalWidth * 0.18) && goalkeeper.y < Math.max(1.6, pitch.goalWidth * 0.65)) {
+    nearPostScore = Math.min(nearPostScore, 68);
+    mainErrorType = "OVERPROTECTS_NEAR_POST";
+    notes.push("Слишком сильное смещение к ближней штанге открывает дальнюю часть ворот.");
+  }
+
+  if (scenarioType === "one_v_one" || scenarioType === "one_v_one_loose_touch") {
+    if (localPosition.u < positionZones.cfg.idealDepth - positionZones.cfg.backSlack) {
       mainErrorType = "PASSIVE_1V1";
       notes.push("В 1-в-1 нужно сократить угол.");
     }
 
-    if (goalkeeper.y > ball.y - 1.5) {
+    if (localPosition.u > Math.min(ball.y - 1.5, positionZones.cfg.idealDepth + positionZones.cfg.forwardSlack)) {
       mainErrorType = "RUSHED_1V1";
-      notes.push("Выход слишком далеко, нападающий может обыграть.");
+      notes.push("Выход слишком далеко: нападающий может обыграть или перебросить.");
     }
   }
 
-  if (level.category === "defender_pressure") {
+  if (scenarioType === "defender_pressure") {
     const defender = level.players.find((player) => player.role === "defender");
 
     if (defender) {
       const defenderPoint = toMeters(defender, pitch);
       const defenderNear = distance(defenderPoint, ball) < pitch.goalWidth * 1.15;
 
-      if (defenderNear && goalkeeper.y > optimal.y + pitch.goalWidth * 0.35) {
+      if (defenderNear && localPosition.u > positionZones.cfg.idealDepth + positionZones.cfg.forwardSlack) {
         defenderScore = 45;
         mainErrorType = "IGNORED_DEFENDER";
         notes.push("Защитник рядом, ранний выход рискованный.");
@@ -145,8 +169,8 @@ export function evaluateGoalkeeper(
   }
 
   if (level.previousBall) {
-    const previousBall = toMeters(level.previousBall, pitch);
-    const previousOptimal = pointOnBallLine(previousBall, pitch, optimalDepth(previousBall, pitch, "normal"));
+    const previousZones = buildPositionZones({ ...level, ball: level.previousBall }, pitch);
+    const previousOptimal = previousZones.ideal;
     const closerToOldLine = distance(goalkeeper, previousOptimal) + 1 < distance(goalkeeper, optimal);
 
     if (closerToOldLine) {
@@ -164,9 +188,9 @@ export function evaluateGoalkeeper(
     notes.push("Корпус развернут не к мячу.");
   }
 
-  if (!isInsideZone(goalkeeperPercent, correctZone)) {
+  if (!isCorrect(localPosition, positionZones.cfg)) {
     mainErrorType = mainErrorType ?? detectPrecisionError(goalkeeperPercent, targetPercent);
-    notes.push("Белая точка стоп вне зеленой зоны.");
+    notes.push("Позиция вне основной правильной зоны.");
   }
 
   let total = Math.round(lineScore * 0.27 + depthScore * 0.27 + nearPostScore * 0.18 + orientationScore * 0.14 + defenderScore * 0.07 + passScore * 0.07);
@@ -175,8 +199,11 @@ export function evaluateGoalkeeper(
     const selectedWall = wall ?? level.freeKick.initialWall;
     const countDiff = Math.abs(selectedWall.count - level.freeKick.recommendedWallCount);
     const targetWallCenter = zoneCenter(level.freeKick.wallZone);
+    const selectedWallPoint = toMeters(selectedWall, pitch);
     const wallDistance = distance(toMeters(selectedWall, pitch), toMeters(targetWallCenter, pitch));
     const wallInZone = isInsideZone(selectedWall, level.freeKick.wallZone);
+    const wallBetweenBallAndKeeper = selectedWallPoint.y > goalkeeper.y && selectedWallPoint.y < ball.y;
+    const hiddenBehindWall = wallBetweenBallAndKeeper && distancePointToLine(goalkeeper, selectedWallPoint, ball) < Math.max(0.55, pitch.goalWidth * 0.14);
 
     wallCountScore = countDiff === 0 ? 100 : countDiff === 1 ? 62 : countDiff === 2 ? 28 : 0;
     wallPositionScore = wallInZone ? 100 : scoreByDistance(wallDistance, Math.max(0.65, pitch.goalWidth * 0.12), Math.max(4, pitch.goalWidth * 0.8));
@@ -191,10 +218,19 @@ export function evaluateGoalkeeper(
       notes.push("Стенка не закрывает ближний угол.");
     }
 
+    if (hiddenBehindWall) {
+      mainErrorType = "NO_BALL_VISIBILITY";
+      wallPositionScore = Math.min(wallPositionScore, 72);
+      notes.push("Вратарь спрятался за стенкой и плохо видит мяч.");
+    }
+
     total = Math.round(total * 0.55 + wallCountScore * 0.2 + wallPositionScore * 0.25);
   }
 
+  total = clamp(total, 0, 100);
+
   return {
+    scenarioType,
     lineScore,
     depthScore,
     nearPostScore,
@@ -206,19 +242,35 @@ export function evaluateGoalkeeper(
     wallZone: level.freeKick?.wallZone,
     total,
     mainErrorType,
+    outsideShotAngle: !insideShotAngle,
     optimalPoint: targetPercent,
     correctZone,
+    correctOrientedZone: positionZones.correct,
+    almostOrientedZone: positionZones.almost,
+    dangerOrientedZone:
+      mainErrorType === "TOO_DEEP" || mainErrorType === "PASSIVE_1V1"
+        ? positionZones.tooDeep
+        : mainErrorType === "TOO_HIGH" || mainErrorType === "RUSHED_1V1"
+          ? positionZones.tooHigh
+          : undefined,
+    tooDeepOrientedZone: positionZones.tooDeep,
+    tooHighOrientedZone: positionZones.tooHigh,
     notes
   };
 }
 
 export function checkAnswer(goalkeeper: Point, level: Level, pitch: PitchConfig, goalkeeperFacing?: number, wall?: WallConfig): CheckResult {
   const evaluation = evaluateGoalkeeper(goalkeeper, level, pitch, goalkeeperFacing, wall);
-  const inCorrectZone = isInsideZone(goalkeeper, evaluation.correctZone);
-  const wellOriented = evaluation.orientationScore >= 80;
+  const positionZones = buildPositionZones(level, pitch);
+  const localPosition = toLocal(toMeters(goalkeeper, pitch), goalCenter(pitch), positionZones.axes);
+  const zoneClassification = classifyLocalPosition(localPosition, positionZones.cfg, !evaluation.outsideShotAngle);
+  const inCorrectZone = zoneClassification.status === "correct";
+  const wellOriented = evaluation.orientationScore >= 72;
   const wallReady = !level.freeKick || ((evaluation.wallCountScore ?? 100) >= 85 && (evaluation.wallPositionScore ?? 100) >= 80);
+  const componentsReady = evaluation.lineScore >= 72 && evaluation.depthScore >= 72 && evaluation.nearPostScore >= 68 && wellOriented;
+  const dangerous = zoneClassification.status === "dangerous" || (isDangerousError(evaluation.mainErrorType) && !componentsReady);
 
-  if (inCorrectZone && wellOriented && wallReady) {
+  if (inCorrectZone && componentsReady && evaluation.total >= 85 && wallReady && !dangerous) {
     return {
       result: "correct",
       score: Math.max(85, evaluation.total),
@@ -228,7 +280,18 @@ export function checkAnswer(goalkeeper: Point, level: Level, pitch: PitchConfig,
     };
   }
 
-  if ((level.almostZone && isInsideZone(goalkeeper, level.almostZone)) || evaluation.total >= 65 || inCorrectZone || (level.freeKick && wallReady)) {
+  if (dangerous) {
+    return {
+      result: "dangerous",
+      score: evaluation.total,
+      text: level.errorText,
+      repeat: true,
+      errorType: zoneClassification.errorType ?? evaluation.mainErrorType ?? level.mainErrorType,
+      evaluation
+    };
+  }
+
+  if (!evaluation.outsideShotAngle && (zoneClassification.status === "almost" || evaluation.total >= 65 || inCorrectZone || (level.freeKick && wallReady))) {
     return {
       result: "almost",
       score: evaluation.total,

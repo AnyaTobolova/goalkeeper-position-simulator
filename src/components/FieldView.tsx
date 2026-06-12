@@ -1,6 +1,6 @@
 import { useMemo, useRef } from "react";
-import type { CheckResult, Level, PitchConfig, Point, WallConfig, Zone } from "../domain/types";
-import { fromMeters, goalCenter, isInsideZone, leftPost, rightPost, toMeters } from "../domain/geometry";
+import type { CheckResult, Level, OrientedZone, PitchConfig, Point, WallConfig, Zone } from "../domain/types";
+import { fromMeters, goalCenter, leftPost, rightPost, toMeters } from "../domain/geometry";
 
 type FieldViewProps = {
   pitch: PitchConfig;
@@ -8,6 +8,7 @@ type FieldViewProps = {
   goalkeeper: Point;
   goalkeeperFacing: number;
   result: CheckResult | null;
+  showAnalysis: boolean;
   showDimensions: boolean;
   wall?: WallConfig;
   onGoalkeeperChange: (point: Point) => void;
@@ -33,6 +34,21 @@ function zoneToRect(zone: Zone, fieldHeight: number) {
 
 function formatMeters(value: number) {
   return `${Math.round(value * 10) / 10} м`;
+}
+
+function ZoneCapsule({ zone, className, fieldHeight }: { zone: OrientedZone; className: string; fieldHeight: number }) {
+  const center = {
+    x: zone.center.x,
+    y: yToSvg(zone.center.y) * (fieldHeight / 100)
+  };
+  const depthHalf = Math.max(1.2, zone.depthHalf * (fieldHeight / 100));
+  const sideHalf = Math.max(0.9, zone.sideHalf);
+
+  return (
+    <g transform={`translate(${center.x} ${center.y}) rotate(${zone.angle})`}>
+      <rect className={className} x={-sideHalf} y={-depthHalf} width={sideHalf * 2} height={depthHalf * 2} rx={sideHalf} ry={sideHalf} />
+    </g>
+  );
 }
 
 function normalizeAngle(angle: number) {
@@ -130,8 +146,9 @@ function WallFigure({ x, y, count }: { x: number; y: number; count: number }) {
   );
 }
 
-export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, showDimensions, wall, onGoalkeeperChange, onGoalkeeperFacingChange, onWallChange }: FieldViewProps) {
+export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, showAnalysis, showDimensions, wall, onGoalkeeperChange, onGoalkeeperFacingChange, onWallChange }: FieldViewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const shotAngleClipId = useRef(`shot-angle-clip-${Math.random().toString(36).slice(2)}`).current;
   const fieldHeight = Math.max(64, (pitch.fieldLength / pitch.fieldWidth) * viewBoxWidth);
   const scaleX = viewBoxWidth / pitch.fieldWidth;
   const scaleY = fieldHeight / pitch.fieldLength;
@@ -148,9 +165,13 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
   const keeperSvg = percentToSvg(goalkeeper);
   const wallSvg = wall ? percentToSvg(wall) : null;
   const optimalSvg = result ? percentToSvg(result.evaluation.optimalPoint) : null;
-  const correctRect = result ? zoneToRect(result.evaluation.correctZone, fieldHeight) : null;
+  const correctZone = result?.evaluation.correctOrientedZone;
+  const almostZone = result?.evaluation.almostOrientedZone;
+  const dangerZone = result?.evaluation.dangerOrientedZone;
+  const tooDeepZone = result?.evaluation.tooDeepOrientedZone;
+  const tooHighZone = result?.evaluation.tooHighOrientedZone;
   const wallRect = result?.evaluation.wallZone ? zoneToRect(result.evaluation.wallZone, fieldHeight) : null;
-  const footInsideTarget = result ? isInsideZone(goalkeeper, result.evaluation.correctZone) : true;
+  const footInsideTarget = result ? result.result === "correct" : true;
   const box = pitch.markings;
   const goalSvgX = (pitch.fieldWidth / 2 - pitch.goalWidth / 2) * scaleX;
   const goalSvgWidth = pitch.goalWidth * scaleX;
@@ -290,6 +311,9 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
           <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="#f6c453" />
           </marker>
+          <clipPath id={shotAngleClipId} clipPathUnits="userSpaceOnUse">
+            <polygon points={`${ball.x},${ball.y} ${leftSvg.x},${leftSvg.y} ${rightSvg.x},${rightSvg.y}`} />
+          </clipPath>
         </defs>
 
         <rect x="0" y="0" width={viewBoxWidth} height={fieldHeight} rx="1" fill="url(#grass)" />
@@ -373,17 +397,14 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
             <line className="analysis-line" x1={ball.x} y1={ball.y} x2={centerSvg.x} y2={centerSvg.y} />
             <line className="trajectory danger" x1={ball.x} y1={ball.y} x2={leftSvg.x} y2={leftSvg.y} />
             <line className="trajectory danger" x1={ball.x} y1={ball.y} x2={rightSvg.x} y2={rightSvg.y} />
+            <g clipPath={`url(#${shotAngleClipId})`}>
+              {showAnalysis && tooDeepZone && <ZoneCapsule zone={tooDeepZone} className={`danger-zone ${dangerZone === tooDeepZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
+              {showAnalysis && tooHighZone && <ZoneCapsule zone={tooHighZone} className={`danger-zone ${dangerZone === tooHighZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
+              {almostZone && <ZoneCapsule zone={almostZone} className="almost-zone" fieldHeight={fieldHeight} />}
+              {optimalSvg && correctZone && <ZoneCapsule zone={correctZone} className="correct-zone" fieldHeight={fieldHeight} />}
+            </g>
             {optimalSvg && (
               <>
-                {correctRect && (
-                  <ellipse
-                    className="correct-zone"
-                    cx={optimalSvg.x}
-                    cy={optimalSvg.y}
-                    rx={Math.max(0.95, correctRect.width / 2)}
-                    ry={Math.max(0.95, correctRect.height / 2)}
-                  />
-                )}
                 <line className="move-arrow" x1={keeperSvg.x} y1={keeperSvg.y} x2={optimalSvg.x} y2={optimalSvg.y} markerEnd="url(#arrow)" />
                 <circle className="target-foot-point" cx={optimalSvg.x} cy={optimalSvg.y} r="0.95" />
               </>

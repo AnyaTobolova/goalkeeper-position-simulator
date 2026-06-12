@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, ListRestart } from "lucide-react";
+import { AlertTriangle, BarChart3, ListRestart, Trash2 } from "lucide-react";
 import type { ErrorType, Level, PlayerProfile, Progress } from "../domain/types";
 
 type StatsPanelProps = {
@@ -10,6 +10,7 @@ type StatsPanelProps = {
   onSelectedPlayerChange: (playerId: string) => void;
   onTrainPlayer: (playerId: string) => void;
   onOpenLevel: (levelId: string) => void;
+  onClearPlayerProgress: (playerId: string) => void;
 };
 
 const errorTitles: Record<ErrorType, string> = {
@@ -19,11 +20,14 @@ const errorTitles: Record<ErrorType, string> = {
   TOO_DEEP: "Слишком глубоко",
   TOO_HIGH: "Слишком высоко",
   NEAR_POST_OPEN: "Открыт ближний угол",
+  OVERPROTECTS_NEAR_POST: "Прижался к штанге",
   PASSIVE_1V1: "Пассивно в 1-в-1",
   RUSHED_1V1: "Ранний выход",
   IGNORED_DEFENDER: "Не учтен защитник",
   NOT_ADJUSTED_AFTER_PASS: "Не перестроился после паса",
+  STUCK_NEAR_POST: "Застрял у штанги",
   WRONG_BODY_ANGLE: "Корпус не к мячу",
+  NO_BALL_VISIBILITY: "Не видит мяч",
   WALL_COUNT_WRONG: "Неверная стенка",
   WALL_POSITION_WRONG: "Стенка не там"
 };
@@ -35,11 +39,14 @@ const errorHints: Record<ErrorType, string> = {
   TOO_DEEP: "Выйди выше, чтобы уменьшить видимый размер ворот.",
   TOO_HIGH: "Остановись раньше, чтобы не открыть обводку или переброс.",
   NEAR_POST_OPEN: "Сначала закрой штангу рядом с мячом.",
+  OVERPROTECTS_NEAR_POST: "Закрывай ближний угол, но не бросай всю дальнюю часть ворот.",
   PASSIVE_1V1: "Сократи угол и будь готов к удару.",
   RUSHED_1V1: "Выходи быстро, но остановись перед ударом.",
   IGNORED_DEFENDER: "Оцени, давит ли защитник на игрока с мячом.",
   NOT_ADJUSTED_AFTER_PASS: "После паса ищи новую линию мяча.",
+  STUCK_NEAR_POST: "После прострела или отката двигайся за новой точкой мяча.",
   WRONG_BODY_ANGLE: "Поверни корпус к мячу, не только поставь ноги в точку.",
+  NO_BALL_VISIBILITY: "Стенка должна помогать, но мяч все равно нужно видеть.",
   WALL_COUNT_WRONG: "Подбери число игроков под опасность удара.",
   WALL_POSITION_WRONG: "Стенка закрывает ближний угол, вратарь - открытую часть."
 };
@@ -70,7 +77,7 @@ function collectWeakLevels(levels: Level[], progress: Progress) {
     .slice(0, 5);
 }
 
-export function StatsPanel({ levels, players, activePlayerId, selectedPlayerId, progressByPlayer, onSelectedPlayerChange, onTrainPlayer, onOpenLevel }: StatsPanelProps) {
+export function StatsPanel({ levels, players, activePlayerId, selectedPlayerId, progressByPlayer, onSelectedPlayerChange, onTrainPlayer, onOpenLevel, onClearPlayerProgress }: StatsPanelProps) {
   const progress = progressByPlayer[selectedPlayerId] ?? {};
   const selectedPlayer = players.find((player) => player.id === selectedPlayerId) ?? players[0];
   const errorStats = collectErrorStats(progress);
@@ -97,11 +104,19 @@ export function StatsPanel({ levels, players, activePlayerId, selectedPlayerId, 
         </select>
       </label>
 
-      {selectedPlayer && selectedPlayer.id !== activePlayerId && (
-        <button className="ghost stats-train-button" type="button" onClick={() => onTrainPlayer(selectedPlayer.id)}>
-          Тренировать этого игрока
-        </button>
-      )}
+      <div className="stats-actions">
+        {selectedPlayer && selectedPlayer.id !== activePlayerId && (
+          <button className="ghost stats-train-button" type="button" onClick={() => onTrainPlayer(selectedPlayer.id)}>
+            Тренировать этого игрока
+          </button>
+        )}
+        {selectedPlayer && attempts > 0 && (
+          <button className="danger-button stats-clear-button" type="button" onClick={() => onClearPlayerProgress(selectedPlayer.id)}>
+            <Trash2 size={16} />
+            <span>Очистить статистику</span>
+          </button>
+        )}
+      </div>
 
       <div className="summary-row">
         <span>Попыток</span>

@@ -20,6 +20,10 @@ function playerProgressKey(playerId: string) {
   return `goalkeeper-sim:progress:${playerId}`;
 }
 
+function playerLastLevelKey(playerId: string) {
+  return `goalkeeper-sim:last-level:${playerId}`;
+}
+
 export function loadPlayers(): PlayerProfile[] {
   try {
     const saved = localStorage.getItem(playersKey);
@@ -81,6 +85,25 @@ export function savePlayerProgress(playerId: string, progress: Progress) {
 
 export function deletePlayerProgress(playerId: string) {
   localStorage.removeItem(playerProgressKey(playerId));
+}
+
+export function loadPlayerLastLevelIndex(playerId: string) {
+  const saved = localStorage.getItem(playerLastLevelKey(playerId));
+  const parsed = Number(saved);
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 0;
+  }
+
+  return Math.floor(parsed);
+}
+
+export function savePlayerLastLevelIndex(playerId: string, levelIndex: number) {
+  localStorage.setItem(playerLastLevelKey(playerId), String(Math.max(0, Math.floor(levelIndex))));
+}
+
+export function deletePlayerLastLevelIndex(playerId: string) {
+  localStorage.removeItem(playerLastLevelKey(playerId));
 }
 
 export function loadPitch(): PitchConfig {

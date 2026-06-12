@@ -14,6 +14,22 @@ export type LevelCategory =
   | "corner"
   | "free_kick";
 
+export type ScenarioType =
+  | "central_shot"
+  | "side_shot"
+  | "sharp_angle"
+  | "long_shot"
+  | "close_shot"
+  | "one_v_one"
+  | "one_v_one_loose_touch"
+  | "pass_or_cutback"
+  | "cross_goal"
+  | "high_cross"
+  | "corner"
+  | "free_kick"
+  | "defender_pressure"
+  | "sweeper_position";
+
 export type ErrorType =
   | "TOO_CENTRAL"
   | "TOO_LEFT"
@@ -21,15 +37,18 @@ export type ErrorType =
   | "TOO_DEEP"
   | "TOO_HIGH"
   | "NEAR_POST_OPEN"
+  | "OVERPROTECTS_NEAR_POST"
   | "PASSIVE_1V1"
   | "RUSHED_1V1"
   | "IGNORED_DEFENDER"
   | "NOT_ADJUSTED_AFTER_PASS"
+  | "STUCK_NEAR_POST"
   | "WRONG_BODY_ANGLE"
+  | "NO_BALL_VISIBILITY"
   | "WALL_COUNT_WRONG"
   | "WALL_POSITION_WRONG";
 
-export type ResultKind = "correct" | "almost" | "wrong";
+export type ResultKind = "correct" | "almost" | "wrong" | "dangerous";
 
 export type Point = {
   x: number;
@@ -47,6 +66,22 @@ export type WallConfig = {
   count: number;
   x: number;
   y: number;
+};
+
+export type ZoneConfig = {
+  idealDepth: number;
+  correctDepthHalf: number;
+  correctSideHalf: number;
+  backSlack: number;
+  forwardSlack: number;
+  sideSlack: number;
+};
+
+export type OrientedZone = {
+  center: Point;
+  depthHalf: number;
+  sideHalf: number;
+  angle: number;
 };
 
 export type FieldMarkings = {
@@ -103,6 +138,7 @@ export type Level = {
   id: string;
   title: string;
   category: LevelCategory;
+  scenarioType?: ScenarioType;
   difficulty: 1 | 2 | 3 | 4 | 5;
   ball: Point;
   previousBall?: Point;
@@ -127,6 +163,7 @@ export type Level = {
 };
 
 export type EvaluationScore = {
+  scenarioType: ScenarioType;
   lineScore: number;
   depthScore: number;
   nearPostScore: number;
@@ -136,8 +173,14 @@ export type EvaluationScore = {
   wallCountScore?: number;
   wallPositionScore?: number;
   wallZone?: Zone;
+  correctOrientedZone?: OrientedZone;
+  almostOrientedZone?: OrientedZone;
+  dangerOrientedZone?: OrientedZone;
+  tooDeepOrientedZone?: OrientedZone;
+  tooHighOrientedZone?: OrientedZone;
   total: number;
   mainErrorType?: ErrorType;
+  outsideShotAngle?: boolean;
   optimalPoint: Point;
   correctZone: Zone;
   notes: string[];
