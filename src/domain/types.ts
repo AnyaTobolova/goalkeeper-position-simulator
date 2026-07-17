@@ -10,9 +10,19 @@ export type LevelCategory =
   | "one_v_one"
   | "defender_pressure"
   | "pass_reposition"
+  | "reaction"
   | "cross"
   | "corner"
-  | "free_kick";
+  | "free_kick"
+  | "penalty";
+
+export type TrainingStage = "base_position" | "reaction_to_ball_owner";
+
+export type TrainingMode = TrainingStage;
+
+export type ReactionDifficulty = "easy" | "medium" | "hard";
+
+export type ReactionTimeSeconds = 5 | 4 | 3;
 
 export type ScenarioType =
   | "central_shot"
@@ -27,8 +37,10 @@ export type ScenarioType =
   | "high_cross"
   | "corner"
   | "free_kick"
+  | "penalty"
   | "defender_pressure"
-  | "sweeper_position";
+  | "sweeper_position"
+  | "reaction_to_ball_owner";
 
 export type ErrorType =
   | "TOO_CENTRAL"
@@ -47,6 +59,8 @@ export type ErrorType =
   | "NO_BALL_VISIBILITY"
   | "WALL_COUNT_WRONG"
   | "WALL_POSITION_WRONG"
+  | "TOO_LATE_REACTION"
+  | "WRONG_BALL_OWNER"
   | "WRONG_POSITION"
   | "ALMOST";
 
@@ -156,9 +170,14 @@ export type ExplanationLayers = {
 export type Level = {
   id: string;
   title: string;
+  stage?: TrainingStage;
   category: LevelCategory;
   scenarioType?: ScenarioType;
   difficulty: 1 | 2 | 3 | 4 | 5;
+  reactionDifficulty?: ReactionDifficulty;
+  reactionTimeSeconds?: ReactionTimeSeconds;
+  ballOwnerActivationDelayMs?: number;
+  activatedBallOwnerId?: string;
   ball: Point;
   previousBall?: Point;
   players: Player[];
@@ -166,10 +185,20 @@ export type Level = {
   initialGoalkeeperFacing?: number;
   correctZone?: Zone;
   almostZone?: Zone;
+  // Цель для стандартов (угловой, навес, штрафной, пенальти) в координатах ворот,
+  // чтобы позиция не зависела от выбранного пресета поля:
+  // side: доля полуширины ворот (-1 = левая штанга, 0 = центр, +1 = правая штанга);
+  // depth: метры от линии ворот.
+  goalTarget?: {
+    side: number;
+    depth: number;
+  };
   freeKick?: {
     recommendedWallCount: number;
     initialWall: WallConfig;
-    wallZone: Zone;
+    // Целевая зона стенки вычисляется геометрически (см. freeKickWallZone),
+    // поле оставлено для ручного переопределения в особых уровнях.
+    wallZone?: Zone;
   };
   pitchPresetOverride?: PitchPresetId;
   mainErrorType: ErrorType;

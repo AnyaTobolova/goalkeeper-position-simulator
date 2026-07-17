@@ -44,43 +44,6 @@ export function distancePointToLine(point: Point, lineA: Point, lineB: Point) {
   return Math.abs(dy * point.x - dx * point.y + lineB.x * lineA.y - lineB.y * lineA.x) / denominator;
 }
 
-export function pointOnBallLine(ball: Point, pitch: PitchConfig, depth: number): Point {
-  const center = goalCenter(pitch);
-  const t = clamp(depth / Math.max(ball.y, 0.1), 0, 1);
-
-  return {
-    x: center.x + (ball.x - center.x) * t,
-    y: depth
-  };
-}
-
-export function optimalDepth(ball: Point, pitch: PitchConfig, levelKind: "normal" | "one_v_one" | "defender") {
-  const penaltyDepth = pitch.markings.penaltyAreaDepth ?? pitch.fieldLength * 0.25;
-  const closeLimit = Math.max(3, pitch.goalWidth * 0.8);
-  const farLimit = Math.min(penaltyDepth * 0.75, pitch.goalWidth * 2.2);
-  const ballDistance = ball.y;
-  const base = clamp(ballDistance * 0.32, closeLimit, farLimit);
-
-  if (levelKind === "one_v_one") {
-    return clamp(ballDistance * 0.45, closeLimit + 1, Math.min(penaltyDepth * 0.85, ballDistance - 2));
-  }
-
-  if (levelKind === "defender") {
-    return clamp(base * 0.82, closeLimit, farLimit);
-  }
-
-  return base;
-}
-
-export function zoneAround(point: Point, pitch: PitchConfig, xRadius = 1.9, yRadius = 1.8): Zone {
-  return {
-    xMin: fromMeters({ x: point.x - xRadius, y: point.y }, pitch).x,
-    xMax: fromMeters({ x: point.x + xRadius, y: point.y }, pitch).x,
-    yMin: fromMeters({ x: point.x, y: point.y - yRadius }, pitch).y,
-    yMax: fromMeters({ x: point.x, y: point.y + yRadius }, pitch).y
-  };
-}
-
 export function isInsideZone(point: Point, zone: Zone) {
   return point.x >= zone.xMin && point.x <= zone.xMax && point.y >= zone.yMin && point.y <= zone.yMax;
 }

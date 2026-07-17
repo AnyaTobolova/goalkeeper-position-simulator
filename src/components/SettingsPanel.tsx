@@ -1,15 +1,17 @@
 import { Ruler, Settings2 } from "lucide-react";
-import type { GoalPresetId, PitchConfig, PitchPresetId } from "../domain/types";
+import type { GoalPresetId, PitchConfig, PitchPresetId, ReactionTimeSeconds } from "../domain/types";
 import { goalPresets, pitchPresets } from "../domain/presets";
 
 type SettingsPanelProps = {
   pitch: PitchConfig;
   showDimensions: boolean;
+  reactionTimeSeconds: ReactionTimeSeconds;
   onPitchChange: (pitch: PitchConfig) => void;
   onShowDimensionsChange: (show: boolean) => void;
+  onReactionTimeSecondsChange: (seconds: ReactionTimeSeconds) => void;
 };
 
-export function SettingsPanel({ pitch, showDimensions, onPitchChange, onShowDimensionsChange }: SettingsPanelProps) {
+export function SettingsPanel({ pitch, showDimensions, reactionTimeSeconds, onPitchChange, onShowDimensionsChange, onReactionTimeSecondsChange }: SettingsPanelProps) {
   function updatePitchPreset(presetId: PitchPresetId) {
     onPitchChange(pitchPresets[presetId]);
   }
@@ -87,6 +89,15 @@ export function SettingsPanel({ pitch, showDimensions, onPitchChange, onShowDime
           <input value={pitch.goalHeight} type="number" min="1.5" step="0.1" onChange={(event) => updateNumber("goalHeight", event.target.value)} />
         </label>
       </div>
+
+      <label>
+        Время реакции
+        <select value={reactionTimeSeconds} onChange={(event) => onReactionTimeSecondsChange(Number(event.target.value) as ReactionTimeSeconds)}>
+          <option value={5}>5 секунд</option>
+          <option value={4}>4 секунды</option>
+          <option value={3}>3 секунды</option>
+        </select>
+      </label>
 
       <button className={showDimensions ? "toggle active" : "toggle"} type="button" onClick={() => onShowDimensionsChange(!showDimensions)}>
         <Ruler size={17} />

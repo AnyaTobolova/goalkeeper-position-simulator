@@ -1,6 +1,6 @@
-import type { ErrorType, Level, PitchConfig, Point, ZoneConfig } from "./types";
+import type { ErrorType, Level, PitchConfig, Point, ScenarioType, ZoneConfig } from "./types";
 import { clamp, distancePointToLine, fromMeters, goalCenter, leftPost, rightPost, toMeters } from "./geometry";
-import { inferScenarioType } from "./scenarios";
+import { goalAnchoredScenarios, inferScenarioType, inferShotScenarioType } from "./scenarios";
 
 export type LocalAxes = {
   ux: number;
@@ -108,29 +108,39 @@ export const zoneConfigs = {
     forwardSlack: 1.1,
     sideSlack: 1.8
   },
+  // Стандарты ниже строятся в осях ворот: idealDepth - метры от линии ворот,
+  // боковые допуски - метры от целевой точки на линии ворот.
   high_cross: {
-    idealDepth: 3.2,
-    correctDepthHalf: 1.4,
-    correctSideHalf: 1.4,
-    backSlack: 2.4,
-    forwardSlack: 1.1,
-    sideSlack: 2
+    idealDepth: 1.4,
+    correctDepthHalf: 0.8,
+    correctSideHalf: 1,
+    backSlack: 1.1,
+    forwardSlack: 1.2,
+    sideSlack: 1.7
   },
   corner: {
-    idealDepth: 2.8,
-    correctDepthHalf: 1.2,
-    correctSideHalf: 1.5,
-    backSlack: 2.1,
-    forwardSlack: 1,
-    sideSlack: 2
+    idealDepth: 0.9,
+    correctDepthHalf: 0.7,
+    correctSideHalf: 0.9,
+    backSlack: 0.6,
+    forwardSlack: 1.1,
+    sideSlack: 1.6
   },
   free_kick: {
-    idealDepth: 3.4,
-    correctDepthHalf: 1.4,
-    correctSideHalf: 1.4,
-    backSlack: 2.4,
+    idealDepth: 2.2,
+    correctDepthHalf: 1,
+    correctSideHalf: 0.9,
+    backSlack: 1.6,
     forwardSlack: 1.2,
-    sideSlack: 2
+    sideSlack: 1.5
+  },
+  penalty: {
+    idealDepth: 0.35,
+    correctDepthHalf: 0.45,
+    correctSideHalf: 0.8,
+    backSlack: 0.5,
+    forwardSlack: 0.7,
+    sideSlack: 1.2
   },
   conservative: {
     idealDepth: 3.4,
@@ -174,46 +184,89 @@ export function fromLocal(local: LocalPosition, center: Point, axes: LocalAxes):
   };
 }
 
+// Чем меньше ворота, тем ближе к линии рабочая глубина вратаря:
+// маленькие ворота перекрываются с меньшим выходом, а переброс и обводка опаснее.
+// Эталон - юниорские ворота 5 м.
+export function goalDepthScale(pitch: PitchConfig) {
+  return clamp(pitch.goalWidth / 5, 0.75, 1.35);
+}
+
+// Боковые допуски стандартов тоже сужаются на маленьких воротах.
+function goalSideScale(pitch: PitchConfig) {
+  return clamp(pitch.goalWidth / 5, 0.7, 1.4);
+}
+
+// Тип сценария для расчета глубины: реакционные уровни используют
+// геометрию точки мяча, а не собственный тип reaction_to_ball_owner.
+function depthScenarioType(level: Level, pitch: PitchConfig): ScenarioType {
+  const scenarioType = inferScenarioType(level, pitch);
+
+  if (scenarioType === "reaction_to_ball_owner") {
+    return inferShotScenarioType(level.ball, pitch);
+  }
+
+  return scenarioType;
+}
+
+// Ограничение сверху: вратарь не подходит к мячу вплотную,
+// каким бы ни был размер ворот.
+function capByBallDistance(depth: number, distance: number, gap: number) {
+  return Math.min(depth, Math.max(1.5, distance - gap));
+}
+
 export function getZoneConfig(level: Level, pitch: PitchConfig): ZoneConfig {
   const ball = toMeters(level.ball, pitch);
   const distance = ball.y;
   const scenarioType = inferScenarioType(level, pitch);
+  const s = goalDepthScale(pitch);
 
-  if (scenarioType === "one_v_one_loose_touch") {
-    return { ...zoneConfigs.one_v_one_loose_touch, idealDepth: clamp(distance * 0.46, 7, Math.max(7, distance - 2.2)) };
+  if (goalAnchoredScenarios.has(scenarioType)) {
+    const baseConfig = zoneConfigs[scenarioType as "corner" | "high_cross" | "free_kick" | "penalty"];
+    const sideScale = goalSideScale(pitch);
+
+    return {
+      ...baseConfig,
+      idealDepth: level.goalTarget?.depth ?? baseConfig.idealDepth,
+      correctSideHalf: baseConfig.correctSideHalf * sideScale,
+      sideSlack: baseConfig.sideSlack * sideScale
+    };
   }
 
-  if (scenarioType === "one_v_one") {
-    return { ...zoneConfigs.one_v_one, idealDepth: clamp(distance * 0.42, 5.5, Math.max(6, distance - 2.4)) };
+  const shotType = depthScenarioType(level, pitch);
+
+  if (shotType === "one_v_one_loose_touch") {
+    return { ...zoneConfigs.one_v_one_loose_touch, idealDepth: clamp(distance * 0.46 * s, 7 * s, Math.max(7 * s, distance - 2.2)) };
   }
 
-  if (scenarioType === "cross_goal" || scenarioType === "high_cross" || scenarioType === "corner" || scenarioType === "free_kick") {
-    const baseConfig = zoneConfigs[scenarioType];
-    const targetDepth = level.correctZone ? ((level.correctZone.yMin + level.correctZone.yMax) / 2 / 100) * pitch.fieldLength : baseConfig.idealDepth;
-    return { ...baseConfig, idealDepth: targetDepth };
+  if (shotType === "one_v_one") {
+    return { ...zoneConfigs.one_v_one, idealDepth: clamp(distance * 0.42 * s, 5.5 * s, Math.max(6 * s, distance - 2.4)) };
   }
 
-  if (scenarioType === "long_shot" && distance >= 55) {
+  if (shotType === "cross_goal") {
+    return { ...zoneConfigs.cross_goal, idealDepth: capByBallDistance(clamp(distance * 0.3 * s, 2.4 * s, 4.4 * s), distance, 1.5) };
+  }
+
+  if (shotType === "long_shot" && distance >= 55) {
     return { ...zoneConfigs.sweeper_position, idealDepth: clamp(distance * 0.24, 10, 14) };
   }
 
-  if (scenarioType === "long_shot") {
-    return { ...zoneConfigs.long_shot, idealDepth: clamp(distance * 0.24, 6.5, 9.5) };
+  if (shotType === "long_shot") {
+    return { ...zoneConfigs.long_shot, idealDepth: clamp(distance * 0.24 * s, 6.5 * s, 9.5 * s) };
   }
 
-  if (scenarioType === "close_shot") {
-    return { ...zoneConfigs.close_shot, idealDepth: clamp(distance * 0.34, 3.4, 5.2) };
+  if (shotType === "close_shot") {
+    return { ...zoneConfigs.close_shot, idealDepth: capByBallDistance(clamp(distance * 0.34 * s, 3.4 * s, 5.2 * s), distance, 1.6) };
   }
 
-  if (scenarioType === "side_shot" || scenarioType === "sharp_angle" || scenarioType === "defender_pressure" || scenarioType === "pass_or_cutback") {
-    return { ...zoneConfigs[scenarioType], idealDepth: clamp(distance * 0.28, 3.2, 6.4) };
+  if (shotType === "side_shot" || shotType === "sharp_angle" || shotType === "defender_pressure" || shotType === "pass_or_cutback") {
+    return { ...zoneConfigs[shotType], idealDepth: capByBallDistance(clamp(distance * 0.28 * s, 3.2 * s, 6.4 * s), distance, 1.6) };
   }
 
-  if (scenarioType === "sweeper_position") {
+  if (shotType === "sweeper_position") {
     return { ...zoneConfigs.sweeper_position, idealDepth: clamp(distance * 0.24, 10, 14) };
   }
 
-  return { ...zoneConfigs.central_shot, idealDepth: clamp(distance * 0.26, 4.8, 7.2) };
+  return { ...zoneConfigs.central_shot, idealDepth: clamp(distance * 0.26 * s, 4.8 * s, 7.2 * s) };
 }
 
 export function getIdealPoint(center: Point, axes: LocalAxes, idealDepth: number): Point {
@@ -350,11 +403,80 @@ function cappedSideHalf(ball: Point, center: Point, axes: LocalAxes, pitch: Pitc
   return Math.min(sideHalf, shotCorridorHalf(ball, center, axes, pitch, uMin, uMax, safety));
 }
 
+// Позиция по умолчанию для стандартов, если уровень не задал goalTarget.
+function defaultGoalTargetSide(scenarioType: ScenarioType, level: Level): number {
+  const ballRight = level.ball.x >= 50;
+
+  if (scenarioType === "corner") {
+    // Открытое поле: стойка между серединой ворот и дальней штангой.
+    return ballRight ? -0.35 : 0.35;
+  }
+
+  if (scenarioType === "free_kick") {
+    // Стенка закрывает ближний угол, вратарь отвечает за открытую часть.
+    return ballRight ? -0.45 : 0.45;
+  }
+
+  return 0;
+}
+
+// Оси ворот: u - метры от линии ворот вглубь поля, v - метры вправо от целевой точки.
+const goalAxes: LocalAxes = { ux: 0, uy: 1, px: 1, py: 0 };
+
+function buildGoalAnchoredZones(level: Level, pitch: PitchConfig, cfg: ZoneConfig, scenarioType: ScenarioType) {
+  const center = goalCenter(pitch);
+  const side = level.goalTarget?.side ?? defaultGoalTargetSide(scenarioType, level);
+  let anchorX = center.x + (side * pitch.goalWidth) / 2;
+
+  // При штрафном вратарь закрывает открытую часть сектора удара.
+  // Сектор сужается от ворот к мячу, поэтому на рабочей глубине точка
+  // не должна выходить за линию мяч - дальняя штанга.
+  if (scenarioType === "free_kick" || scenarioType === "penalty") {
+    const ball = toMeters(level.ball, pitch);
+
+    if (ball.y > 0.5) {
+      const t = clamp(cfg.idealDepth / ball.y, 0, 1);
+      const leftEdge = leftPost(pitch).x * (1 - t) + ball.x * t;
+      const rightEdge = rightPost(pitch).x * (1 - t) + ball.x * t;
+      const margin = 0.3;
+      anchorX = clamp(anchorX, Math.min(leftEdge, rightEdge) + margin, Math.max(leftEdge, rightEdge) - margin);
+    }
+  }
+
+  const anchor = { x: anchorX, y: 0 };
+  const ideal = { x: anchor.x, y: cfg.idealDepth };
+  const correctUMin = Math.max(0, cfg.idealDepth - cfg.correctDepthHalf);
+  const correctUMax = cfg.idealDepth + cfg.correctDepthHalf;
+  const almostUMin = Math.max(0, cfg.idealDepth - cfg.backSlack);
+  const almostUMax = cfg.idealDepth + cfg.forwardSlack;
+  const warningDepth = warningDepthBuffer(cfg);
+  const tooDeepMax = cfg.idealDepth - cfg.backSlack - warningDepth;
+  const tooHighMin = cfg.idealDepth + cfg.forwardSlack + warningDepth;
+
+  return {
+    cfg,
+    axes: goalAxes,
+    center: anchor,
+    ideal,
+    correct: localZoneToPercent(anchor, goalAxes, pitch, correctUMin, correctUMax, cfg.correctSideHalf),
+    almost: localZoneToPercent(anchor, goalAxes, pitch, almostUMin, almostUMax, cfg.sideSlack),
+    tooDeep: tooDeepMax > 0 ? localZoneToPercent(anchor, goalAxes, pitch, Math.max(0, tooDeepMax - 4), tooDeepMax, cfg.sideSlack + 0.8) : undefined,
+    tooHigh: localZoneToPercent(anchor, goalAxes, pitch, tooHighMin, tooHighMin + 4, cfg.sideSlack + 0.8)
+  };
+}
+
 export function buildPositionZones(level: Level, pitch: PitchConfig) {
   const ball = toMeters(level.ball, pitch);
   const center = goalCenter(pitch);
+  const scenarioType = inferScenarioType(level, pitch);
+  const anchoredCfg = getZoneConfig(level, pitch);
+
+  if (goalAnchoredScenarios.has(scenarioType)) {
+    return buildGoalAnchoredZones(level, pitch, anchoredCfg, scenarioType);
+  }
+
   const axes = getLocalAxes(ball, center);
-  const baseCfg = getZoneConfig(level, pitch);
+  const baseCfg = anchoredCfg;
   const correctUMin = baseCfg.idealDepth - baseCfg.correctDepthHalf;
   const correctUMax = baseCfg.idealDepth + baseCfg.correctDepthHalf;
   const correctSideHalf = cappedSideHalf(ball, center, axes, pitch, correctUMin, correctUMax, baseCfg.correctSideHalf, 0.6);

@@ -30,6 +30,8 @@ const errorTitles: Record<ErrorType, string> = {
   NO_BALL_VISIBILITY: "Не видит мяч",
   WALL_COUNT_WRONG: "Неверная стенка",
   WALL_POSITION_WRONG: "Стенка не там",
+  TOO_LATE_REACTION: "Опоздал к мячу",
+  WRONG_BALL_OWNER: "Не тот игрок",
   WRONG_POSITION: "Позиция неудачная",
   ALMOST: "Почти верно"
 };
@@ -51,6 +53,8 @@ const errorHints: Record<ErrorType, string> = {
   NO_BALL_VISIBILITY: "Стенка должна помогать, но мяч все равно нужно видеть.",
   WALL_COUNT_WRONG: "Подбери число игроков под опасность удара.",
   WALL_POSITION_WRONG: "Стенка закрывает ближний угол, вратарь - открытую часть.",
+  TOO_LATE_REACTION: "Быстрее найди активный мяч, сместись и остановись до удара.",
+  WRONG_BALL_OWNER: "Сначала смотри, у кого мяч. Игрок без мяча - только риск паса.",
   WRONG_POSITION: "Вернись к линии мяча и защити ворота.",
   ALMOST: "Осталась маленькая поправка, чтобы попасть в лучшую зону."
 };

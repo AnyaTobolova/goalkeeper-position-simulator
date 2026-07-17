@@ -4,13 +4,13 @@ import { FieldView } from "./components/FieldView";
 import { PlayerPanel } from "./components/PlayerPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { StatsPanel } from "./components/StatsPanel";
-import { checkAnswer } from "./domain/evaluate";
+import { checkAnswer, resolveTimeoutResult } from "./domain/evaluate";
 import { buildFeedback, criterionStatusText } from "./domain/feedback";
 import { facingAngleToBall, normalizeAngle } from "./domain/geometry";
 import { levels } from "./domain/levels";
 import { pitchPresets } from "./domain/presets";
 import { criteriaByScenarioType, getBallSide, type CriterionKey } from "./domain/scenarios";
-import type { CheckResult, ErrorType, Level, PitchConfig, PlayerProfile, Point, Progress, VisualHint, WallConfig } from "./domain/types";
+import type { CheckResult, ErrorType, Level, PitchConfig, PlayerProfile, Point, Progress, ReactionTimeSeconds, TrainingMode, VisualHint, WallConfig } from "./domain/types";
 import {
   loadActivePlayerId,
   loadOnboardingComplete,
@@ -18,7 +18,9 @@ import {
   loadPlayerLastLevelIndex,
   loadPlayerProgress,
   loadPlayers,
+  loadReactionTimeSeconds,
   loadShowDimensions,
+  loadTrainingMode,
   deletePlayerLastLevelIndex,
   deletePlayerProgress,
   saveActivePlayerId,
@@ -26,8 +28,10 @@ import {
   savePitch,
   savePlayerLastLevelIndex,
   savePlayerProgress,
+  saveReactionTimeSeconds,
   savePlayers,
-  saveShowDimensions
+  saveShowDimensions,
+  saveTrainingMode
 } from "./storage";
 
 const onboardingCards = [
@@ -338,7 +342,19 @@ function categoryTitle(category: Level["category"]) {
       return "Угловой";
     case "free_kick":
       return "Штрафной";
+    case "penalty":
+      return "Пенальти";
+    case "reaction":
+      return "Реакция";
   }
+}
+
+function trainingModeTitle(mode: TrainingMode) {
+  return mode === "base_position" ? "База" : "Реакция";
+}
+
+function trainingModeDescription(mode: TrainingMode) {
+  return mode === "base_position" ? "49 начальных сценариев" : "18 реакционных сценариев";
 }
 
 function resultLabel(result: CheckResult | null) {
@@ -393,8 +409,8 @@ function criteriaLegendItems(criteria: { status: string }[]) {
   ].filter(Boolean) as { kind: string; text: string }[];
 }
 
-function getNextLevelIndex(currentIndex: number, progress: Progress) {
-  const repeatIndex = levels.findIndex((level, index) => {
+function getNextLevelIndex(currentIndex: number, progress: Progress, trainingLevels: Level[]) {
+  const repeatIndex = trainingLevels.findIndex((level, index) => {
     const item = progress[level.id];
     return index !== currentIndex && item?.needsRepeat && item.correctStreak < 2;
   });
@@ -403,7 +419,7 @@ function getNextLevelIndex(currentIndex: number, progress: Progress) {
     return repeatIndex;
   }
 
-  return (currentIndex + 1) % levels.length;
+  return (currentIndex + 1) % trainingLevels.length;
 }
 
 function emptyLevelProgress() {
@@ -451,8 +467,8 @@ function updateProgress(progress: Progress, level: Level, result: CheckResult): 
   };
 }
 
-function masteredCount(progress: Progress) {
-  return levels.filter((level) => progress[level.id]?.correctStreak >= 2).length;
+function masteredCount(progress: Progress, trainingLevels: Level[]) {
+  return trainingLevels.filter((level) => progress[level.id]?.correctStreak >= 2).length;
 }
 
 function createPlayer(name: string): PlayerProfile {
@@ -509,6 +525,10 @@ function errorLabel(errorType?: ErrorType) {
       return "ошибается с числом игроков в стенке";
     case "WALL_POSITION_WRONG":
       return "стенка не закрывает ближний угол";
+    case "TOO_LATE_REACTION":
+      return "часто не успевает занять позицию";
+    case "WRONG_BALL_OWNER":
+      return "реагирует не на игрока с мячом";
     default:
       return "нет слабых мест";
   }
@@ -691,11 +711,21 @@ function feedbackSummary(result: CheckResult, level: Level) {
       return "Ты правильно выставил стенку, видишь мяч и занял открытую часть ворот.";
     }
 
+    if (level.category === "penalty") {
+      return "Ты на линии ворот по центру, как требуют правила, и готов оттолкнуться в любую сторону.";
+    }
+
     if (level.category === "cross" || level.category === "corner") {
       return "Ты выбрал безопасную стартовую зону, видишь мяч и готов двигаться по траектории.";
     }
 
     return "Ты правильно выбрал игровую зону и закрыл угол удара.";
+  }
+
+  const error = resultError(result, level);
+
+  if (level.category === "penalty" && (error === "TOO_HIGH" || error === "RUSHED_1V1")) {
+    return "По правилам пенальти до удара хотя бы часть одной ноги должна оставаться на линии ворот. Если выйти раньше, удар могут заставить перебить.";
   }
 
   const lead = positiveLead(result, level);
@@ -736,7 +766,15 @@ function feedbackSummary(result: CheckResult, level: Level) {
 
 function mainAdvice(result: CheckResult, level: Level) {
   if (result.result === "correct") {
+    if (level.category === "penalty") {
+      return "Запомни правило пенальти: до удара оставайся на линии ворот, отойти от нее можно только после удара.";
+    }
+
     return "Запомни правило: встань на линию мяча, выбери безопасную глубину и будь готов к удару.";
+  }
+
+  if (level.category === "penalty" && (resultError(result, level) === "TOO_HIGH" || resultError(result, level) === "RUSHED_1V1")) {
+    return "Вернись на линию ворот: при пенальти правило разрешает покинуть ее только после удара.";
   }
 
   switch (resultError(result, level)) {
@@ -912,6 +950,20 @@ function criterionForKey(key: CriterionKey, result: CheckResult, level: Level): 
         status: depthStatus,
         text: depthStatus === "good" ? "пространство контролируется" : "проверь расстояние до ворот"
       };
+    case "ballOwner":
+      return {
+        key,
+        label: "Игрок с мячом",
+        status: error === "WRONG_BALL_OWNER" ? "bad" : "good",
+        text: error === "WRONG_BALL_OWNER" ? "смотри на активный мяч" : "главная угроза найдена"
+      };
+    case "reactionTime":
+      return {
+        key,
+        label: "Время реакции",
+        status: error === "TOO_LATE_REACTION" ? "bad" : "good",
+        text: error === "TOO_LATE_REACTION" ? "не успел занять позицию" : "успел до удара"
+      };
   }
 }
 
@@ -1050,13 +1102,57 @@ export function App() {
   const [statsOpen, setStatsOpen] = useState(false);
   const [statsPlayerId, setStatsPlayerId] = useState(() => activePlayerId);
   const [statsRefreshKey, setStatsRefreshKey] = useState(0);
+  const [trainingMode, setTrainingMode] = useState<TrainingMode>(() => loadTrainingMode());
+  const [reactionTimeSeconds, setReactionTimeSeconds] = useState<ReactionTimeSeconds>(() => loadReactionTimeSeconds());
   const [draftPitch, setDraftPitch] = useState<PitchConfig>(() => pitch);
   const [draftShowDimensions, setDraftShowDimensions] = useState(showDimensions);
-  const level = levels[levelIndex];
+  const [draftReactionTimeSeconds, setDraftReactionTimeSeconds] = useState<ReactionTimeSeconds>(() => reactionTimeSeconds);
+  const [reactionPhase, setReactionPhase] = useState<"waiting" | "active">("waiting");
+  const [reactionTimeLeft, setReactionTimeLeft] = useState<number | null>(null);
+  const trainingLevels = useMemo(() => levels.filter((item) => (trainingMode === "base_position" ? item.stage !== "reaction_to_ball_owner" : item.stage === "reaction_to_ball_owner")), [trainingMode]);
+  const rawLevel = trainingLevels[Math.min(levelIndex, trainingLevels.length - 1)] ?? trainingLevels[0] ?? levels[0];
+  // Пенальти пробивается с точки пенальти активного пресета,
+  // поэтому мяч и бьющий подгоняются под разметку.
+  const level = useMemo<Level>(() => {
+    if (rawLevel.scenarioType !== "penalty") {
+      return rawLevel;
+    }
+
+    const levelPitch = rawLevel.pitchPresetOverride ? pitchPresets[rawLevel.pitchPresetOverride] : pitch;
+    const spotDistance = levelPitch.markings.penaltySpotDistance;
+
+    if (!spotDistance) {
+      return rawLevel;
+    }
+
+    const spotY = (spotDistance / levelPitch.fieldLength) * 100;
+
+    return {
+      ...rawLevel,
+      ball: { x: 50, y: spotY },
+      players: rawLevel.players.map((player) => (player.hasBall ? { ...player, y: spotY + 4 } : player))
+    };
+  }, [pitch, rawLevel]);
+  const isReactionLevel = level.stage === "reaction_to_ball_owner";
+  const effectiveReactionSeconds = isReactionLevel ? reactionTimeSeconds : null;
+  const reactionActive = !isReactionLevel || reactionPhase === "active" || Boolean(result);
+  const displayedLevel = useMemo<Level>(() => {
+    if (!isReactionLevel) {
+      return level;
+    }
+
+    return {
+      ...level,
+      players: level.players.map((player) => ({
+        ...player,
+        hasBall: reactionActive && player.id === level.activatedBallOwnerId
+      }))
+    };
+  }, [isReactionLevel, level, reactionActive]);
   const activePitch = level.pitchPresetOverride ? pitchPresets[level.pitchPresetOverride] : pitch;
   const activePlayer = players.find((player) => player.id === activePlayerId) ?? players[0];
-  const savedLevelIndex = Math.min(levels.length - 1, loadPlayerLastLevelIndex(activePlayerId));
-  const hasTrainingToContinue = savedLevelIndex > 0 || Object.values(progress).some((item) => item.attempts > 0);
+  const savedLevelIndex = Math.min(trainingLevels.length - 1, loadPlayerLastLevelIndex(activePlayerId, trainingMode));
+  const hasTrainingToContinue = savedLevelIndex > 0 || trainingLevels.some((item) => (progress[item.id]?.attempts ?? 0) > 0);
   const feedback = useMemo(() => (result ? buildFeedback(result, level) : null), [level, result]);
   const visibleFieldLegend = useMemo(() => fieldLegendItems(feedback?.visualHints ?? []), [feedback]);
   const statsProgressByPlayer = useMemo(() => {
@@ -1065,9 +1161,9 @@ export function App() {
   const statsPlayer = players.find((player) => player.id === statsPlayerId) ?? activePlayer;
 
   const weakTopic = useMemo(() => {
-    const repeated = levels.find((item) => progress[item.id]?.needsRepeat);
+    const repeated = trainingLevels.find((item) => progress[item.id]?.needsRepeat);
     return repeated ? categoryTitle(repeated.category) : "нет слабых тем";
-  }, [progress]);
+  }, [progress, trainingLevels]);
 
   const commonError = useMemo(() => errorLabel(mostCommonError(progress)), [progress]);
 
@@ -1089,6 +1185,14 @@ export function App() {
   }, [pitch]);
 
   useEffect(() => {
+    saveTrainingMode(trainingMode);
+  }, [trainingMode]);
+
+  useEffect(() => {
+    saveReactionTimeSeconds(reactionTimeSeconds);
+  }, [reactionTimeSeconds]);
+
+  useEffect(() => {
     savePlayerProgress(activePlayerId, progress);
   }, [progress]);
 
@@ -1096,20 +1200,76 @@ export function App() {
     saveShowDimensions(showDimensions);
   }, [showDimensions]);
 
+  useEffect(() => {
+    const nextIndex = Math.min(trainingLevels.length - 1, loadPlayerLastLevelIndex(activePlayerId, trainingMode));
+    moveToLevel(nextIndex, false);
+  }, [activePlayerId, trainingMode, trainingLevels.length]);
+
+  useEffect(() => {
+    if (!playerSelected) {
+      setReactionPhase(isReactionLevel ? "waiting" : "active");
+      setReactionTimeLeft(null);
+      return;
+    }
+
+    if (!isReactionLevel || result) {
+      setReactionPhase("active");
+      setReactionTimeLeft(null);
+      return;
+    }
+
+    setReactionPhase("waiting");
+    setReactionTimeLeft(null);
+    const activationTimer = window.setTimeout(() => {
+      setReactionPhase("active");
+      setReactionTimeLeft(effectiveReactionSeconds);
+    }, level.ballOwnerActivationDelayMs ?? 1200);
+
+    return () => window.clearTimeout(activationTimer);
+  }, [effectiveReactionSeconds, isReactionLevel, level.ballOwnerActivationDelayMs, level.id, playerSelected, result]);
+
+  useEffect(() => {
+    if (!isReactionLevel || reactionPhase !== "active" || result || reactionTimeLeft === null) {
+      return;
+    }
+
+    if (reactionTimeLeft <= 0) {
+      submitAnswer("timeout");
+      return;
+    }
+
+    const countdownTimer = window.setTimeout(() => {
+      setReactionTimeLeft((current) => (current === null ? current : Math.max(0, current - 1)));
+    }, 1000);
+
+    return () => window.clearTimeout(countdownTimer);
+  }, [isReactionLevel, reactionPhase, reactionTimeLeft, result]);
+
   function moveToLevel(nextIndex: number, shouldSave = true) {
-    const safeIndex = Math.max(0, Math.min(levels.length - 1, nextIndex));
-    const nextGoalkeeper = startGoalkeeperForLevel(levels[safeIndex], safeIndex);
+    const safeIndex = Math.max(0, Math.min(trainingLevels.length - 1, nextIndex));
+    const nextLevel = trainingLevels[safeIndex];
+    const nextGoalkeeper = startGoalkeeperForLevel(nextLevel, safeIndex);
     setLevelIndex(safeIndex);
     setGoalkeeper(nextGoalkeeper);
-    setGoalkeeperFacing(startFacingForLevel(levels[safeIndex], nextGoalkeeper, safeIndex));
-    setWall(startWallForLevel(levels[safeIndex]));
+    setGoalkeeperFacing(startFacingForLevel(nextLevel, nextGoalkeeper, safeIndex));
+    setWall(startWallForLevel(nextLevel));
     setResult(null);
     setHintVisible(false);
     setWhyVisible(false);
+    setReactionPhase(nextLevel.stage === "reaction_to_ball_owner" ? "waiting" : "active");
+    setReactionTimeLeft(null);
 
     if (shouldSave) {
-      savePlayerLastLevelIndex(activePlayerId, safeIndex);
+      savePlayerLastLevelIndex(activePlayerId, safeIndex, trainingMode);
     }
+  }
+
+  function changeTrainingMode(mode: TrainingMode) {
+    if (mode === trainingMode) {
+      return;
+    }
+
+    setTrainingMode(mode);
   }
 
   function startTraining(mode: "restart" | "continue") {
@@ -1117,15 +1277,22 @@ export function App() {
     setPlayerSelected(true);
   }
 
-  function submitAnswer() {
+  function submitAnswer(reason: "manual" | "timeout" = "manual") {
+    if (isReactionLevel && reactionPhase !== "active" && reason === "manual") {
+      return;
+    }
+
     const checked = checkAnswer(goalkeeper, level, activePitch, goalkeeperFacing, level.freeKick ? wall : undefined);
-    setResult(checked);
+    const finalResult = reason === "timeout" ? resolveTimeoutResult(checked, goalkeeper, startGoalkeeperForLevel(level, levelIndex)) : checked;
+
+    setResult(finalResult);
     setWhyVisible(false);
-    setProgress((current) => updateProgress(current, level, checked));
+    setReactionTimeLeft(null);
+    setProgress((current) => updateProgress(current, level, finalResult));
   }
 
   function nextLevel() {
-    const nextIndex = getNextLevelIndex(levelIndex, progress);
+    const nextIndex = getNextLevelIndex(levelIndex, progress, trainingLevels);
     moveToLevel(nextIndex);
   }
 
@@ -1137,6 +1304,8 @@ export function App() {
     setResult(null);
     setHintVisible(false);
     setWhyVisible(false);
+    setReactionPhase(isReactionLevel ? "waiting" : "active");
+    setReactionTimeLeft(null);
   }
 
   function rotateGoalkeeper(delta: number) {
@@ -1152,6 +1321,7 @@ export function App() {
   function openSettings() {
     setDraftPitch(pitch);
     setDraftShowDimensions(showDimensions);
+    setDraftReactionTimeSeconds(reactionTimeSeconds);
     setSettingsOpen(true);
   }
 
@@ -1163,6 +1333,7 @@ export function App() {
   function saveSettings() {
     handlePitchChange(draftPitch);
     setShowDimensions(draftShowDimensions);
+    setReactionTimeSeconds(draftReactionTimeSeconds);
     setSettingsOpen(false);
   }
 
@@ -1176,7 +1347,8 @@ export function App() {
     const player = createPlayer(trimmedName);
     setPlayers((current) => [...current, player]);
     savePlayerProgress(player.id, {});
-    savePlayerLastLevelIndex(player.id, 0);
+    savePlayerLastLevelIndex(player.id, 0, "base_position");
+    savePlayerLastLevelIndex(player.id, 0, "reaction_to_ball_owner");
     setActivePlayerId(player.id);
     setNewPlayerName("");
   }
@@ -1196,7 +1368,7 @@ export function App() {
   }
 
   function openLevel(levelId: string) {
-    const nextIndex = levels.findIndex((item) => item.id === levelId);
+    const nextIndex = trainingLevels.findIndex((item) => item.id === levelId);
 
     if (nextIndex < 0) {
       return;
@@ -1250,11 +1422,11 @@ export function App() {
         </div>
         <div className="top-stats" aria-label="Прогресс">
           <div>
-            <span>{masteredCount(progress)}</span>
+            <span>{masteredCount(progress, trainingLevels)}</span>
             <small>закреплено</small>
           </div>
           <div>
-            <span>{levels.length}</span>
+            <span>{trainingLevels.length}</span>
             <small>ситуаций</small>
           </div>
         </div>
@@ -1298,14 +1470,22 @@ export function App() {
             </div>
           </div>
 
+          {isReactionLevel && !result && (
+            <div className={`reaction-timer-banner ${reactionPhase}`} aria-live="polite">
+              <strong>{reactionPhase === "waiting" ? "Мяч появится" : `Осталось ${reactionTimeLeft ?? effectiveReactionSeconds} сек.`}</strong>
+              <span>{reactionPhase === "waiting" ? "Смотри расстановку игроков." : "Найди мяч, займи линию и остановись."}</span>
+            </div>
+          )}
+
           <FieldView
             pitch={activePitch}
-            level={level}
+            level={displayedLevel}
             goalkeeper={goalkeeper}
             goalkeeperFacing={goalkeeperFacing}
             result={result}
             showDimensions={showDimensions}
             visualHints={feedback?.visualHints ?? []}
+            hideBall={isReactionLevel && !reactionActive}
             wall={level.freeKick ? wall : undefined}
             onGoalkeeperChange={(point) => {
               if (!result) {
@@ -1332,7 +1512,20 @@ export function App() {
               <span>Разбор позиции</span>
             </div>
 
-            <p className="coach-text">{feedback ? feedback.summary : `${activePlayer?.name ?? "Игрок"}, выбери позицию до удара.`}</p>
+            {isReactionLevel && !result && (
+              <div className={`reaction-status ${reactionPhase}`}>
+                <strong>{reactionPhase === "waiting" ? "Смотри расстановку" : `Мяч активен: ${reactionTimeLeft ?? effectiveReactionSeconds} сек.`}</strong>
+                <span>{reactionPhase === "waiting" ? "Пока мяча нет, не угадывай позицию заранее." : "Найди игрока с мячом, займи линию и остановись."}</span>
+              </div>
+            )}
+
+            <p className="coach-text">
+              {feedback
+                ? feedback.summary
+                : isReactionLevel && reactionPhase === "waiting"
+                  ? `${activePlayer?.name ?? "Игрок"}, сначала прочитай расстановку. Мяч появится через мгновение.`
+                  : `${activePlayer?.name ?? "Игрок"}, выбери позицию до удара.`}
+            </p>
             {feedback && result && (
               <>
                 <div className="why-toggle-row">
@@ -1422,7 +1615,7 @@ export function App() {
 
             <div className="actions">
               {!result ? (
-                <button className="primary" type="button" onClick={submitAnswer}>
+                <button className="primary" type="button" onClick={() => submitAnswer()} disabled={isReactionLevel && reactionPhase !== "active"}>
                   <Target size={18} />
                   <span>Готов</span>
                 </button>
@@ -1457,6 +1650,14 @@ export function App() {
               <Activity size={18} />
               <span>Тренировка</span>
             </div>
+            <div className="mode-switch" aria-label="Блок тренировки">
+              <button className={trainingMode === "base_position" ? "active" : ""} type="button" onClick={() => changeTrainingMode("base_position")}>
+                База
+              </button>
+              <button className={trainingMode === "reaction_to_ball_owner" ? "active" : ""} type="button" onClick={() => changeTrainingMode("reaction_to_ball_owner")}>
+                Реакция
+              </button>
+            </div>
             <div className="summary-row">
               <span>Игрок</span>
               <strong>{activePlayer?.name}</strong>
@@ -1464,8 +1665,22 @@ export function App() {
             <div className="summary-row">
               <span>Ситуация</span>
               <strong>
-                {levelIndex + 1}/{levels.length}
+                {levelIndex + 1}/{trainingLevels.length}
               </strong>
+            </div>
+            <div className="summary-row">
+              <span>Блок</span>
+              <strong>{trainingModeTitle(trainingMode)}</strong>
+            </div>
+            {trainingMode === "reaction_to_ball_owner" && (
+              <div className="summary-row">
+                <span>Время</span>
+                <strong>{reactionTimeSeconds} сек.</strong>
+              </div>
+            )}
+            <div className="summary-row">
+              <span>Сценарии</span>
+              <strong>{trainingModeDescription(trainingMode)}</strong>
             </div>
             <div className="summary-row">
               <span>Формат</span>
@@ -1485,7 +1700,7 @@ export function App() {
 
       <div className={`mobile-action-bar ${result ? "after-result" : ""}`} aria-label="Действия тренировки">
         {!result ? (
-          <button className="primary" type="button" onClick={submitAnswer}>
+          <button className="primary" type="button" onClick={() => submitAnswer()} disabled={isReactionLevel && reactionPhase !== "active"}>
             <Target size={18} />
             <span>Готов</span>
           </button>
@@ -1535,8 +1750,10 @@ export function App() {
               <SettingsPanel
                 pitch={draftPitch}
                 showDimensions={draftShowDimensions}
+                reactionTimeSeconds={draftReactionTimeSeconds}
                 onPitchChange={setDraftPitch}
                 onShowDimensionsChange={setDraftShowDimensions}
+                onReactionTimeSecondsChange={setDraftReactionTimeSeconds}
               />
             </div>
 
@@ -1574,12 +1791,22 @@ export function App() {
                 onDeletePlayer={deleteActivePlayer}
               />
             </div>
+            <div className="start-mode-choice" aria-label="Выбор блока тренировки">
+              <button className={trainingMode === "base_position" ? "active" : ""} type="button" onClick={() => changeTrainingMode("base_position")}>
+                <strong>База</strong>
+                <span>49 начальных сценариев</span>
+              </button>
+              <button className={trainingMode === "reaction_to_ball_owner" ? "active" : ""} type="button" onClick={() => changeTrainingMode("reaction_to_ball_owner")}>
+                <strong>Реакция</strong>
+                <span>18 сценариев от 1 до 3 игроков</span>
+              </button>
+            </div>
             <div className="modal-actions">
               <div className="session-choice">
                 <span>
                   {hasTrainingToContinue
-                    ? `Можно продолжить с задания ${savedLevelIndex + 1} из ${levels.length}.`
-                    : "У этого игрока пока нет начатой тренировки."}
+                    ? `Можно продолжить блок «${trainingModeTitle(trainingMode)}» с задания ${savedLevelIndex + 1} из ${trainingLevels.length}.`
+                    : `В блоке «${trainingModeTitle(trainingMode)}» пока нет начатой тренировки.`}
                 </span>
               </div>
               <button type="button" onClick={() => startTraining("restart")}>
@@ -1651,7 +1878,7 @@ export function App() {
               </button>
             </div>
             <StatsPanel
-              levels={levels}
+              levels={trainingLevels}
               players={players}
               activePlayerId={activePlayerId}
               selectedPlayerId={statsPlayer?.id ?? activePlayerId}

@@ -12,7 +12,7 @@ import {
   toMeters
 } from "./geometry";
 import { buildPositionZones, classifyLocalPosition, isCorrect, isInsideShotAngle, toLocal } from "./positionZones";
-import { getBallSide, inferScenarioType } from "./scenarios";
+import { centralBallThreshold, getBallSide, goalAnchoredScenarios, inferScenarioType } from "./scenarios";
 
 function scoreByDistance(value: number, good: number, bad: number) {
   if (value <= good) {
@@ -61,6 +61,33 @@ function zoneCenter(zone: Zone): Point {
   };
 }
 
+// Правильная стенка стоит на линии мяч - ближняя штанга на разрешенном
+// правилами расстоянии от мяча (радиус дуги штрафной = 9,15 м у взрослых,
+// меньше в детских форматах). Зона считается от геометрии, а не задается
+// вручную, поэтому не зависит от выбранного пресета поля.
+export function freeKickWallZone(ballMeters: Point, pitch: PitchConfig): Zone {
+  const center = goalCenter(pitch);
+  const nearPostPoint = ballMeters.x >= center.x ? rightPost(pitch) : leftPost(pitch);
+  const toPost = { x: nearPostPoint.x - ballMeters.x, y: nearPostPoint.y - ballMeters.y };
+  const len = Math.max(0.1, Math.hypot(toPost.x, toPost.y));
+  const legalDistance = pitch.markings.penaltyArcRadius ?? 9.15;
+  const wallDistance = Math.min(legalDistance, len * 0.7);
+  const wallCenter = {
+    x: ballMeters.x + (toPost.x / len) * wallDistance,
+    y: ballMeters.y + (toPost.y / len) * wallDistance
+  };
+  const centerPercent = fromMeters(wallCenter, pitch);
+  const xHalf = (1.4 / pitch.fieldWidth) * 100;
+  const yHalf = (1.6 / pitch.fieldLength) * 100;
+
+  return {
+    xMin: centerPercent.x - xHalf,
+    xMax: centerPercent.x + xHalf,
+    yMin: Math.max(0, centerPercent.y - yHalf),
+    yMax: centerPercent.y + yHalf
+  };
+}
+
 function isDangerousError(errorType?: ErrorType) {
   return errorType === "TOO_HIGH" || errorType === "NEAR_POST_OPEN" || errorType === "RUSHED_1V1" || errorType === "NO_BALL_VISIBILITY";
 }
@@ -80,9 +107,12 @@ export function evaluateGoalkeeper(
   const goalkeeper = toMeters(goalkeeperPercent, pitch);
   const center = goalCenter(pitch);
   const scenarioType = inferScenarioType(level, pitch);
+  const setPiece = goalAnchoredScenarios.has(scenarioType);
   const positionZones = buildPositionZones(level, pitch);
-  const localPosition = toLocal(goalkeeper, center, positionZones.axes);
-  const insideShotAngle = isInsideShotAngle(goalkeeper, ball, pitch);
+  const localPosition = toLocal(goalkeeper, positionZones.center, positionZones.axes);
+  // При угловом и высоком навесе удара еще нет: стартовая стойка у ворот
+  // не обязана попадать в сектор мяч-штанги.
+  const insideShotAngle = scenarioType === "corner" || scenarioType === "high_cross" ? true : isInsideShotAngle(goalkeeper, ball, pitch);
   const zoneClassification = classifyLocalPosition(localPosition, positionZones.cfg, insideShotAngle);
   const lineDistance = Math.abs(localPosition.v);
   const optimal = positionZones.ideal;
@@ -97,17 +127,20 @@ export function evaluateGoalkeeper(
   };
   let lineScore = scoreByDistance(lineDistance, positionZones.cfg.correctSideHalf, positionZones.cfg.sideSlack + 2.4);
   let depthScore = scoreByDistance(depthDiff, positionZones.cfg.correctDepthHalf, Math.max(positionZones.cfg.backSlack, positionZones.cfg.forwardSlack) + 3.2);
-  const ballSide = getBallSide(ball, center);
+  const ballSide = getBallSide(ball, center, centralBallThreshold(pitch));
   const side = ballSide === "center" ? 0 : ballSide === "left" ? -1 : 1;
   const nearPost = side < 0 ? leftPost(pitch) : rightPost(pitch);
   const nearPostDistance = distancePointToLine(goalkeeper, nearPost, ball);
-  let nearPostScore = side === 0 ? 100 : scoreByDistance(nearPostDistance, pitch.goalWidth * 0.38, pitch.goalWidth * 1.15);
+  // Для стандартов ближний угол закрывается стенкой или задан целевой зоной,
+  // поэтому отдельная оценка ближней штанги не применяется.
+  let nearPostScore = side === 0 || setPiece ? 100 : scoreByDistance(nearPostDistance, pitch.goalWidth * 0.38, pitch.goalWidth * 1.15);
   const targetFacing = facingAngleToBall(goalkeeperPercent, level.ball);
   const orientationScore = scoreByDistance(angleDifference(goalkeeperFacing, targetFacing), 14, 78);
   let defenderScore = 100;
   let passScore = 100;
   let wallCountScore: number | undefined;
   let wallPositionScore: number | undefined;
+  let resolvedWallZone: Zone | undefined;
   const notes: string[] = [];
   let mainErrorType: ErrorType | undefined;
 
@@ -134,12 +167,12 @@ export function evaluateGoalkeeper(
     notes.push(goalkeeper.y < targetPoint.y ? "Глубину нужно выбрать смелее." : "Глубину нужно выбрать спокойнее.");
   }
 
-  if (nearPostScore < 55 && Math.abs(ball.x - center.x) > pitch.goalWidth * 0.8) {
+  if (!setPiece && nearPostScore < 55 && Math.abs(ball.x - center.x) > pitch.goalWidth * 0.8) {
     mainErrorType = "NEAR_POST_OPEN";
     notes.push("Ближний угол открыт.");
   }
 
-  if (side !== 0 && distance(goalkeeper, nearPost) < Math.max(0.55, pitch.goalWidth * 0.18) && goalkeeper.y < Math.max(1.6, pitch.goalWidth * 0.65)) {
+  if (!setPiece && side !== 0 && distance(goalkeeper, nearPost) < Math.max(0.55, pitch.goalWidth * 0.18) && goalkeeper.y < Math.max(1.6, pitch.goalWidth * 0.65)) {
     nearPostScore = Math.min(nearPostScore, 68);
     mainErrorType = "OVERPROTECTS_NEAR_POST";
     notes.push("Слишком сильное смещение к ближней штанге открывает дальнюю часть ворот.");
@@ -184,6 +217,24 @@ export function evaluateGoalkeeper(
     }
   }
 
+  if (scenarioType === "reaction_to_ball_owner" && level.activatedBallOwnerId) {
+    const acceptableZone = zoneClassification.status === "correct" || zoneClassification.status === "almost";
+    const decoys = level.players.filter((player) => player.role === "attacker" && player.id !== level.activatedBallOwnerId);
+
+    if (!acceptableZone) {
+      for (const decoy of decoys) {
+        const decoyZones = buildPositionZones({ ...level, ball: { x: decoy.x, y: decoy.y } }, pitch);
+
+        if (distance(goalkeeper, decoyZones.ideal) + 1 < distance(goalkeeper, optimal)) {
+          passScore = Math.min(passScore, 40);
+          mainErrorType = "WRONG_BALL_OWNER";
+          notes.push("Позиция построена от игрока без мяча, а не от активного мяча.");
+          break;
+        }
+      }
+    }
+  }
+
   if (orientationScore < 55) {
     if (!mainErrorType || (lineScore >= 70 && depthScore >= 70 && nearPostScore >= 70)) {
       mainErrorType = "WRONG_BODY_ANGLE";
@@ -202,10 +253,12 @@ export function evaluateGoalkeeper(
   if (level.freeKick) {
     const selectedWall = wall ?? level.freeKick.initialWall;
     const countDiff = Math.abs(selectedWall.count - level.freeKick.recommendedWallCount);
-    const targetWallCenter = zoneCenter(level.freeKick.wallZone);
+    const targetWallZone = freeKickWallZone(ball, pitch);
+    resolvedWallZone = targetWallZone;
+    const targetWallCenter = zoneCenter(targetWallZone);
     const selectedWallPoint = toMeters(selectedWall, pitch);
     const wallDistance = distance(toMeters(selectedWall, pitch), toMeters(targetWallCenter, pitch));
-    const wallInZone = isInsideZone(selectedWall, level.freeKick.wallZone);
+    const wallInZone = isInsideZone(selectedWall, targetWallZone);
     const wallBetweenBallAndKeeper = selectedWallPoint.y > goalkeeper.y && selectedWallPoint.y < ball.y;
     const hiddenBehindWall = wallBetweenBallAndKeeper && distancePointToLine(goalkeeper, selectedWallPoint, ball) < Math.max(0.55, pitch.goalWidth * 0.14);
 
@@ -243,7 +296,7 @@ export function evaluateGoalkeeper(
     orientationScore,
     wallCountScore,
     wallPositionScore,
-    wallZone: level.freeKick?.wallZone,
+    wallZone: resolvedWallZone,
     total,
     mainErrorType,
     outsideShotAngle: !insideShotAngle,
@@ -264,10 +317,45 @@ export function evaluateGoalkeeper(
   };
 }
 
+// По окончании времени реакции оценивается фактическая позиция: если вратарь
+// успел занять рабочую точку, результат не ухудшается. TOO_LATE_REACTION
+// ставится только когда вратарь фактически не отреагировал и остался у старта.
+export function resolveTimeoutResult(checked: CheckResult, goalkeeper: Point, startPoint: Point): CheckResult {
+  if (checked.result === "correct" || checked.result === "almost") {
+    return checked;
+  }
+
+  const movedDistance = Math.hypot(goalkeeper.x - startPoint.x, goalkeeper.y - startPoint.y);
+
+  if (movedDistance < 3) {
+    return {
+      ...checked,
+      result: "dangerous",
+      score: Math.min(checked.score, 35),
+      text: "Время вышло: нужно быстрее найти игрока с мячом и занять позицию.",
+      repeat: true,
+      errorType: "TOO_LATE_REACTION",
+      evaluation: {
+        ...checked.evaluation,
+        mainErrorType: "TOO_LATE_REACTION",
+        notes: [...checked.evaluation.notes, "Время на реакцию закончилось."]
+      }
+    };
+  }
+
+  return {
+    ...checked,
+    evaluation: {
+      ...checked.evaluation,
+      notes: [...checked.evaluation.notes, "Время на реакцию закончилось."]
+    }
+  };
+}
+
 export function checkAnswer(goalkeeper: Point, level: Level, pitch: PitchConfig, goalkeeperFacing?: number, wall?: WallConfig): CheckResult {
   const evaluation = evaluateGoalkeeper(goalkeeper, level, pitch, goalkeeperFacing, wall);
   const positionZones = buildPositionZones(level, pitch);
-  const localPosition = toLocal(toMeters(goalkeeper, pitch), goalCenter(pitch), positionZones.axes);
+  const localPosition = toLocal(toMeters(goalkeeper, pitch), positionZones.center, positionZones.axes);
   const zoneClassification = classifyLocalPosition(localPosition, positionZones.cfg, !evaluation.outsideShotAngle);
   const inCorrectZone = zoneClassification.status === "correct";
   const wellOriented = evaluation.orientationScore >= 72;
@@ -279,6 +367,19 @@ export function checkAnswer(goalkeeper: Point, level: Level, pitch: PitchConfig,
     (zoneClassification.status === "dangerous" || (!isDepthPositionError(evaluation.mainErrorType) && isDangerousError(evaluation.mainErrorType) && !componentsReady));
 
   if (inCorrectZone && wallReady && !dangerous) {
+    // Правильная точка ног без корпуса к мячу не дает «Отлично»:
+    // вратарь должен быть готов реагировать на удар.
+    if (!wellOriented) {
+      return {
+        result: "almost",
+        score: Math.min(evaluation.total, 78),
+        text: "Точка ног выбрана верно, но корпус должен быть развернут к мячу.",
+        repeat: true,
+        errorType: "WRONG_BODY_ANGLE",
+        evaluation: { ...evaluation, mainErrorType: "WRONG_BODY_ANGLE" }
+      };
+    }
+
     return {
       result: "correct",
       score: Math.max(85, evaluation.total),

@@ -1,4 +1,4 @@
-import type { PitchConfig, PlayerProfile, Progress } from "./domain/types";
+import type { PitchConfig, PlayerProfile, Progress, ReactionDifficulty, ReactionTimeSeconds, TrainingMode } from "./domain/types";
 import { pitchPresets } from "./domain/presets";
 
 const progressKey = "goalkeeper-sim:progress";
@@ -7,6 +7,9 @@ const activePlayerKey = "goalkeeper-sim:active-player";
 const pitchKey = "goalkeeper-sim:pitch";
 const dimensionsKey = "goalkeeper-sim:show-dimensions";
 const onboardingKey = "goalkeeper-sim:onboarding-complete";
+const reactionDifficultyKey = "goalkeeper-sim:reaction-difficulty";
+const reactionTimeSecondsKey = "goalkeeper-sim:reaction-time-seconds";
+const trainingModeKey = "goalkeeper-sim:training-mode";
 
 function createDefaultPlayer(): PlayerProfile {
   return {
@@ -20,8 +23,12 @@ function playerProgressKey(playerId: string) {
   return `goalkeeper-sim:progress:${playerId}`;
 }
 
-function playerLastLevelKey(playerId: string) {
+function legacyPlayerLastLevelKey(playerId: string) {
   return `goalkeeper-sim:last-level:${playerId}`;
+}
+
+function playerLastLevelKey(playerId: string, mode: TrainingMode) {
+  return `goalkeeper-sim:last-level:${mode}:${playerId}`;
 }
 
 export function loadPlayers(): PlayerProfile[] {
@@ -87,8 +94,8 @@ export function deletePlayerProgress(playerId: string) {
   localStorage.removeItem(playerProgressKey(playerId));
 }
 
-export function loadPlayerLastLevelIndex(playerId: string) {
-  const saved = localStorage.getItem(playerLastLevelKey(playerId));
+export function loadPlayerLastLevelIndex(playerId: string, mode: TrainingMode = "base_position") {
+  const saved = localStorage.getItem(playerLastLevelKey(playerId, mode)) ?? (mode === "base_position" ? localStorage.getItem(legacyPlayerLastLevelKey(playerId)) : null);
   const parsed = Number(saved);
 
   if (!Number.isFinite(parsed) || parsed < 0) {
@@ -98,12 +105,14 @@ export function loadPlayerLastLevelIndex(playerId: string) {
   return Math.floor(parsed);
 }
 
-export function savePlayerLastLevelIndex(playerId: string, levelIndex: number) {
-  localStorage.setItem(playerLastLevelKey(playerId), String(Math.max(0, Math.floor(levelIndex))));
+export function savePlayerLastLevelIndex(playerId: string, levelIndex: number, mode: TrainingMode = "base_position") {
+  localStorage.setItem(playerLastLevelKey(playerId, mode), String(Math.max(0, Math.floor(levelIndex))));
 }
 
 export function deletePlayerLastLevelIndex(playerId: string) {
-  localStorage.removeItem(playerLastLevelKey(playerId));
+  localStorage.removeItem(legacyPlayerLastLevelKey(playerId));
+  localStorage.removeItem(playerLastLevelKey(playerId, "base_position"));
+  localStorage.removeItem(playerLastLevelKey(playerId, "reaction_to_ball_owner"));
 }
 
 export function loadPitch(): PitchConfig {
@@ -149,4 +158,45 @@ export function loadOnboardingComplete() {
 
 export function saveOnboardingComplete(done: boolean) {
   localStorage.setItem(onboardingKey, String(done));
+}
+
+export function loadReactionDifficulty(): ReactionDifficulty {
+  const saved = localStorage.getItem(reactionDifficultyKey);
+
+  if (saved === "easy" || saved === "medium" || saved === "hard") {
+    return saved;
+  }
+
+  return "easy";
+}
+
+export function loadReactionTimeSeconds(): ReactionTimeSeconds {
+  const saved = Number(localStorage.getItem(reactionTimeSecondsKey));
+
+  if (saved === 5 || saved === 4 || saved === 3) {
+    return saved;
+  }
+
+  const legacyDifficulty = loadReactionDifficulty();
+  if (legacyDifficulty === "medium") return 4;
+  if (legacyDifficulty === "hard") return 3;
+  return 5;
+}
+
+export function saveReactionTimeSeconds(seconds: ReactionTimeSeconds) {
+  localStorage.setItem(reactionTimeSecondsKey, String(seconds));
+}
+
+export function loadTrainingMode(): TrainingMode {
+  const saved = localStorage.getItem(trainingModeKey);
+
+  if (saved === "base_position" || saved === "reaction_to_ball_owner") {
+    return saved;
+  }
+
+  return "base_position";
+}
+
+export function saveTrainingMode(mode: TrainingMode) {
+  localStorage.setItem(trainingModeKey, mode);
 }

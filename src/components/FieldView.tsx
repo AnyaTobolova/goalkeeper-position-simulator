@@ -10,6 +10,7 @@ type FieldViewProps = {
   result: CheckResult | null;
   showDimensions: boolean;
   visualHints: VisualHint[];
+  hideBall?: boolean;
   wall?: WallConfig;
   onGoalkeeperChange: (point: Point) => void;
   onGoalkeeperFacingChange: (angle: number) => void;
@@ -165,7 +166,7 @@ function WallFigure({ x, y, count, scale }: { x: number; y: number; count: numbe
   );
 }
 
-export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, showDimensions, visualHints, wall, onGoalkeeperChange, onGoalkeeperFacingChange, onWallChange }: FieldViewProps) {
+export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, showDimensions, visualHints, hideBall = false, wall, onGoalkeeperChange, onGoalkeeperFacingChange, onWallChange }: FieldViewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const shotAngleClipId = useRef(`shot-angle-clip-${Math.random().toString(36).slice(2)}`).current;
   const compactField = useCompactField();
@@ -477,11 +478,13 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
           </>
         )}
 
-        <g className="ball" transform={`translate(${ball.x} ${ball.y}) scale(${compactField ? 1.18 : 1})`}>
-          <circle className="ball-base" cx="0" cy="0" r="1.28" />
-          <path className="ball-patch" d="M 0 -0.7 L 0.66 -0.2 L 0.42 0.6 L -0.42 0.6 L -0.66 -0.2 Z" />
-          <path className="ball-stitch" d="M 0 -0.7 L 0 -1.2 M 0.66 -0.2 L 1.16 -0.38 M 0.42 0.6 L 0.74 1.04 M -0.42 0.6 L -0.74 1.04 M -0.66 -0.2 L -1.16 -0.38" />
-        </g>
+        {!hideBall && (
+          <g className="ball" transform={`translate(${ball.x} ${ball.y}) scale(${compactField ? 1.18 : 1})`}>
+            <circle className="ball-base" cx="0" cy="0" r="1.28" />
+            <path className="ball-patch" d="M 0 -0.7 L 0.66 -0.2 L 0.42 0.6 L -0.42 0.6 L -0.66 -0.2 Z" />
+            <path className="ball-stitch" d="M 0 -0.7 L 0 -1.2 M 0.66 -0.2 L 1.16 -0.38 M 0.42 0.6 L 0.74 1.04 M -0.42 0.6 L -0.74 1.04 M -0.66 -0.2 L -1.16 -0.38" />
+          </g>
+        )}
 
         <circle
           className="goalkeeper-hit"

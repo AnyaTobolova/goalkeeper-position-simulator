@@ -81,8 +81,10 @@ const excellentSummaryByScenarioType: Record<ScenarioType, string> = {
   high_cross: "Ты видишь мяч, контролируешь траекторию и не бросаешь ворота.",
   corner: "Ты выбрал стартовую позицию, из которой видишь мяч и ворота.",
   free_kick: "Ты видишь мяч и занял открытую часть ворот за стенкой.",
+  penalty: "Ты на линии ворот по центру, как требуют правила, и готов оттолкнуться в любую сторону.",
   defender_pressure: "Ты учёл защитника и сохранил правильную позицию.",
-  sweeper_position: "Ты стоишь выше и готов помочь команде, не теряя ворота."
+  sweeper_position: "Ты стоишь выше и готов помочь команде, не теряя ворота.",
+  reaction_to_ball_owner: "Ты быстро нашел игрока с мячом, занял новую линию и готов к удару."
 };
 
 const summaryByErrorType: Record<FeedbackErrorType, string> = {
@@ -100,6 +102,8 @@ const summaryByErrorType: Record<FeedbackErrorType, string> = {
   NO_BALL_VISIBILITY: "Ты не видишь мяч из-за игроков или стенки. Так сложно среагировать.",
   WALL_COUNT_WRONG: "Для этого штрафного нужно другое число игроков в стенке.",
   WALL_POSITION_WRONG: "Стенка стоит не на той линии и не закрывает нужную часть ворот.",
+  TOO_LATE_REACTION: "Время вышло. Вратарь должен успеть занять позицию и остановиться до удара.",
+  WRONG_BALL_OWNER: "Ты среагировал не на активного игрока с мячом. Сначала найди мяч, потом выбирай позицию.",
   WRONG_BODY_ANGLE: "Позиция ног почти подходит, но корпус нужно повернуть к мячу.",
   IGNORED_DEFENDER: "Защитник уже мешает игроку с мячом, поэтому выходить так далеко рискованно.",
   WRONG_POSITION: "Позиция выбрана неудачно. Нужно вернуться к линии мяча и защитить ворота.",
@@ -121,6 +125,8 @@ const adviceByErrorType: Record<FeedbackErrorType, string> = {
   NO_BALL_VISIBILITY: "Стань так, чтобы видеть мяч.",
   WALL_COUNT_WRONG: "Подбери число игроков в стенке под опасность удара.",
   WALL_POSITION_WRONG: "Поставь стенку на линию удара к ближней штанге.",
+  TOO_LATE_REACTION: "Решай быстрее: найди мяч, сместись на линию и остановись.",
+  WRONG_BALL_OWNER: "Сначала найди игрока с мячом, а игроков без мяча держи в поле зрения.",
   WRONG_BODY_ANGLE: "Оставь позицию ног и поверни корпус к мячу.",
   IGNORED_DEFENDER: "Учти помощь защитника и не выбегай без причины.",
   ALMOST: "Сделай маленькую поправку и останься в игровой зоне.",
@@ -140,8 +146,10 @@ const reinforceByScenarioType: Record<ScenarioType, string> = {
   high_cross: "Запомни правило: сначала прочитай траекторию, потом решай - выходить или держать ворота.",
   corner: "Запомни правило: при угловом важно видеть мяч, игроков и не провалиться в ворота.",
   free_kick: "Запомни правило: стенка закрывает одну часть, ты отвечаешь за открытую и должен видеть мяч.",
+  penalty: "Запомни правило пенальти: до удара хотя бы часть одной ноги остается на линии ворот.",
   defender_pressure: "Запомни правило: если защитник помогает, держи позицию и не выбегай без причины.",
-  sweeper_position: "Запомни правило: когда мяч далеко, можно стоять выше, но не терять ворота за спиной."
+  sweeper_position: "Запомни правило: когда мяч далеко, можно стоять выше, но не терять ворота за спиной.",
+  reaction_to_ball_owner: "Запомни правило: сначала найди активный мяч, потом займи линию мяча и остановись до удара."
 };
 
 export function criterionStatusText(status: CriterionStatus) {
@@ -257,6 +265,10 @@ function readinessCriterion(error: FeedbackErrorType, result: CheckResult): Crit
 
   if (error === "NO_BALL_VISIBILITY") {
     return { key: "readiness", label: "Готовность", status: "dangerous", text: "ты не видишь удар" };
+  }
+
+  if (error === "TOO_LATE_REACTION") {
+    return { key: "readiness", label: "Готовность", status: "dangerous", text: "не успел до удара" };
   }
 
   return { key: "readiness", label: "Готовность", status: "good", text: readinessCriterionTexts.good };
@@ -393,6 +405,20 @@ function criterionForKey(key: CriterionKey, result: CheckResult, level: Level): 
         status: currentDepthStatus,
         text: currentDepthStatus === "good" ? "пространство контролируется" : "проверь расстояние до ворот"
       };
+    case "ballOwner":
+      return {
+        key,
+        label: "Игрок с мячом",
+        status: error === "WRONG_BALL_OWNER" ? "bad" : "good",
+        text: error === "WRONG_BALL_OWNER" ? "смотри на активный мяч" : "главная угроза найдена"
+      };
+    case "reactionTime":
+      return {
+        key,
+        label: "Время реакции",
+        status: error === "TOO_LATE_REACTION" ? "dangerous" : "good",
+        text: error === "TOO_LATE_REACTION" ? "решение опоздало" : "успел занять позицию"
+      };
   }
 }
 
@@ -462,6 +488,10 @@ function explainWhy(result: CheckResult, level: Level) {
     return "Голубой пунктир показывает, откуда пришёл мяч. После паса позиция вратаря меняется вместе с новой точкой мяча.";
   }
 
+  if (result.evaluation.scenarioType === "reaction_to_ball_owner") {
+    return "Во втором этапе правильная позиция строится только после появления мяча. Игрок без мяча остается риском паса, но главная линия идет от активного мяча.";
+  }
+
   if (level.freeKick || error === "NO_BALL_VISIBILITY") {
     return "Голубая линия показывает, видишь ли ты мяч. Стенка помогает, но вратарь не должен прятаться за ней.";
   }
@@ -519,6 +549,22 @@ function movementAdvice(result: CheckResult) {
 }
 
 function summaryForResult(result: CheckResult, error?: FeedbackErrorType) {
+  // Пенальти: выход с линии - нарушение правила игры, а не просто ошибка глубины.
+  if (result.evaluation.scenarioType === "penalty" && (error === "TOO_HIGH" || error === "RUSHED_1V1")) {
+    return "По правилам пенальти до удара хотя бы часть одной ноги должна оставаться на линии ворот. Если выйти раньше, удар могут заставить перебить.";
+  }
+
+  if (error === "TOO_LATE_REACTION" || error === "WRONG_BALL_OWNER") {
+    return summaryByErrorType[error];
+  }
+
+  // При угловом и навесе линии удара еще нет: боковая ошибка - это уход из стартовой стойки.
+  if ((result.evaluation.scenarioType === "corner" || result.evaluation.scenarioType === "high_cross") && (error === "TOO_LEFT" || error === "TOO_RIGHT")) {
+    return error === "TOO_RIGHT"
+      ? "Ты сместился слишком вправо от стартовой стойки. Из этой точки сложнее видеть подачу и успевать на мяч."
+      : "Ты сместился слишком влево от стартовой стойки. Из этой точки сложнее видеть подачу и успевать на мяч.";
+  }
+
   if (error === "TOO_LEFT" || error === "TOO_RIGHT" || error === "TOO_CENTRAL" || result.evaluation.outsideShotAngle) {
     return lineDirectionSummary(result);
   }
@@ -527,6 +573,18 @@ function summaryForResult(result: CheckResult, error?: FeedbackErrorType) {
 }
 
 function adviceForResult(result: CheckResult, error?: FeedbackErrorType) {
+  if (result.evaluation.scenarioType === "penalty" && (error === "TOO_HIGH" || error === "RUSHED_1V1")) {
+    return "Вернись на линию ворот: при пенальти правило разрешает покинуть ее только после удара.";
+  }
+
+  if (error === "TOO_LATE_REACTION" || error === "WRONG_BALL_OWNER") {
+    return adviceByErrorType[error];
+  }
+
+  if ((result.evaluation.scenarioType === "corner" || result.evaluation.scenarioType === "high_cross") && (error === "TOO_LEFT" || error === "TOO_RIGHT")) {
+    return "Вернись в стартовую стойку по подсказке уровня и держи корпус к мячу.";
+  }
+
   if (error === "TOO_LEFT" || error === "TOO_RIGHT" || error === "TOO_CENTRAL" || result.evaluation.outsideShotAngle) {
     return movementAdvice(result);
   }
