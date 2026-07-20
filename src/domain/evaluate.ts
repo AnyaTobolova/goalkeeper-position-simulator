@@ -8,8 +8,10 @@ import {
   goalCenter,
   isInsideZone,
   leftPost,
+  openGoalShare,
   rightPost,
-  toMeters
+  toMeters,
+  widestOpenGoalPoint
 } from "./geometry";
 import { buildPositionZones, classifyLocalPosition, isCorrect, isInsideShotAngle, toLocal } from "./positionZones";
 import { centralBallThreshold, getBallSide, goalAnchoredScenarios, inferScenarioType } from "./scenarios";
@@ -286,8 +288,18 @@ export function evaluateGoalkeeper(
 
   total = clamp(total, 0, 100);
 
+  // Стандарты без прямого удара (угловой, навес) и штрафной со стенкой
+  // не показывают процент: там открытость определяется не только вратарем.
+  const showsOpenGoal = !setPiece || scenarioType === "penalty";
+  const openGoalPercent = showsOpenGoal ? Math.round(openGoalShare(ball, goalkeeper, pitch) * 100) : undefined;
+  const optimalOpenGoalPercent = showsOpenGoal ? Math.round(openGoalShare(ball, targetPoint, pitch) * 100) : undefined;
+  const openShotTarget = showsOpenGoal ? fromMeters(widestOpenGoalPoint(ball, goalkeeper, pitch), pitch) : undefined;
+
   return {
     scenarioType,
+    openGoalPercent,
+    optimalOpenGoalPercent,
+    openShotTarget,
     lineScore,
     depthScore,
     nearPostScore,
@@ -377,6 +389,19 @@ export function checkAnswer(goalkeeper: Point, level: Level, pitch: PitchConfig,
         repeat: true,
         errorType: "WRONG_BODY_ANGLE",
         evaluation: { ...evaluation, mainErrorType: "WRONG_BODY_ANGLE" }
+      };
+    }
+
+    // «Отлично» требует, чтобы и линия, и глубина, и угол были хорошими,
+    // а не только формального попадания в зону.
+    if (!componentsReady) {
+      return {
+        result: "almost",
+        score: Math.min(evaluation.total, 80),
+        text: level.almostText,
+        repeat: true,
+        errorType: evaluation.mainErrorType ?? "ALMOST",
+        evaluation
       };
     }
 

@@ -789,6 +789,71 @@ h2 {
   line-height: 1.45;
 }
 
+.shot-trail {
+  fill: none;
+  stroke-width: 0.5;
+  stroke-dasharray: 1.6 1.3;
+  opacity: 0.85;
+}
+
+.shot-trail.goal {
+  stroke: #ff8a8a;
+}
+
+.shot-trail.save {
+  stroke: #9fe7b8;
+}
+
+.shot-label-group rect {
+  fill: rgba(7, 20, 13, 0.92);
+  stroke-width: 0.35;
+}
+
+.shot-label-group.goal rect {
+  stroke: rgba(255, 138, 138, 0.9);
+}
+
+.shot-label-group.save rect {
+  stroke: rgba(159, 231, 184, 0.9);
+}
+
+.shot-label-group text {
+  font-size: 3.6px;
+  font-weight: 800;
+}
+
+.shot-label-group.goal text {
+  fill: #ffb0b0;
+}
+
+.shot-label-group.save text {
+  fill: #a9f0c2;
+}
+
+.open-goal-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(56, 130, 84, 0.18);
+  border: 1px solid rgba(122, 210, 152, 0.35);
+  color: #dbeade;
+  font-size: 14px;
+}
+
+.open-goal-row strong {
+  color: #9fe7b8;
+  font-size: 16px;
+}
+
+.open-goal-best {
+  color: #b9cfc0;
+  font-size: 13px;
+}
+
 .reaction-status {
   display: grid;
   gap: 5px;
@@ -1839,10 +1904,13 @@ input:focus {
 .onboarding-progress {
   display: flex;
   gap: 6px;
+  max-width: 100%;
 }
 
 .onboarding-progress span {
-  width: 28px;
+  flex: 1 1 8px;
+  max-width: 28px;
+  min-width: 0;
   height: 5px;
   border-radius: 999px;
   background: rgba(219, 244, 222, 0.18);
@@ -2333,4 +2401,653 @@ input:focus {
   .mobile-action-bar button {
     min-height: 50px;
   }
+}
+
+/* Уважение к системной настройке уменьшенного движения */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Квиз по правилам */
+.rules-quiz-modal {
+  max-width: 520px;
+}
+
+.rules-quiz-progress {
+  color: #9fb8a6;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.rules-quiz-question {
+  color: #eaf5ec;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0 0 14px;
+}
+
+.rules-quiz-answers {
+  display: grid;
+  gap: 10px;
+}
+
+.rules-quiz-answer {
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #eaf5ec;
+  font-size: 15px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.rules-quiz-answer.correct {
+  border-color: rgba(122, 210, 152, 0.8);
+  background: rgba(56, 130, 84, 0.3);
+}
+
+.rules-quiz-answer.wrong {
+  border-color: rgba(240, 110, 110, 0.75);
+  background: rgba(150, 50, 50, 0.28);
+}
+
+.rules-quiz-answer.muted {
+  opacity: 0.55;
+}
+
+.rules-quiz-explanation {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #dbeade;
+}
+
+.rules-quiz-explanation.correct {
+  background: rgba(56, 130, 84, 0.2);
+  border: 1px solid rgba(122, 210, 152, 0.4);
+}
+
+.rules-quiz-explanation.wrong {
+  background: rgba(150, 80, 50, 0.2);
+  border: 1px solid rgba(240, 160, 110, 0.4);
+}
+
+.rules-quiz-summary {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 12px 0;
+  color: #eaf5ec;
+}
+
+.rules-quiz-summary strong {
+  font-size: 20px;
+}
+
+.rules-quiz-summary p {
+  color: #c9dccf;
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* Серия пенальти */
+.shootout-modal {
+  max-width: 560px;
+}
+
+.shootout-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.shootout-score small {
+  margin-left: auto;
+  color: #9fb8a6;
+}
+
+.shootout-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.shootout-dot.save {
+  background: #4fbf7a;
+  border-color: #7ad298;
+}
+
+.shootout-dot.goal {
+  background: #d9534f;
+  border-color: #f08a86;
+}
+
+.shootout-goal {
+  position: relative;
+  height: 190px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #1f5f3a 0%, #2a7448 70%, #2f8250 100%);
+  overflow: hidden;
+}
+
+.shootout-crossbar {
+  position: absolute;
+  top: 24px;
+  left: 7%;
+  right: 7%;
+  height: 6px;
+  border-radius: 3px;
+  background: #f2f6f2;
+}
+
+.shootout-post {
+  position: absolute;
+  top: 24px;
+  bottom: 18px;
+  width: 6px;
+  border-radius: 3px;
+  background: #f2f6f2;
+}
+
+.shootout-post.left {
+  left: 7%;
+}
+
+.shootout-post.right {
+  right: 7%;
+}
+
+.shootout-keeper {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  width: 34px;
+  height: 62px;
+  border-radius: 16px 16px 8px 8px;
+  background: #f0c534;
+  transform: translateX(-50%);
+  transition: left 0.35s ease;
+}
+
+.shootout-keeper::before {
+  content: "";
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e9b06c;
+  transform: translateX(-50%);
+}
+
+.shootout-keeper.zone-0 {
+  left: 24%;
+}
+
+.shootout-keeper.zone-2 {
+  left: 76%;
+}
+
+.shootout-ball {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff 0%, #dfe7df 55%, #9aa79c 100%);
+  transform: translateX(-50%);
+  transition: left 0.5s ease-in, bottom 0.5s ease-in;
+}
+
+.shootout-ball.fly {
+  bottom: 78px;
+}
+
+.shootout-ball.fly.zone-0 {
+  left: 20%;
+}
+
+.shootout-ball.fly.zone-1 {
+  left: 50%;
+}
+
+.shootout-ball.fly.zone-2 {
+  left: 80%;
+}
+
+.shootout-zone {
+  position: absolute;
+  top: 24px;
+  bottom: 18px;
+  width: 29%;
+  border: 2px dashed rgba(255, 255, 255, 0.4);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+}
+
+.shootout-zone.zone-0 {
+  left: 7%;
+}
+
+.shootout-zone.zone-1 {
+  left: 35.5%;
+}
+
+.shootout-zone.zone-2 {
+  right: 7%;
+}
+
+.shootout-verdict {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 30px;
+  font-weight: 800;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.shootout-verdict.save {
+  color: #a9f0c2;
+}
+
+.shootout-verdict.goal {
+  color: #ffb0b0;
+}
+
+.shootout-hint {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  text-align: center;
+  color: #dbeade;
+}
+
+.shootout-hint p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.shootout-final {
+  font-size: 22px;
+  color: #eaf5ec;
+}
+
+/* Бейджи */
+.badge-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: rgba(24, 52, 36, 0.96);
+  border: 1px solid rgba(240, 197, 52, 0.6);
+  color: #f6e9b8;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4);
+  z-index: 60;
+}
+
+.badge-toast strong {
+  display: block;
+  font-size: 15px;
+}
+
+.badge-toast small {
+  color: #d8cea0;
+}
+
+.top-stats .streak span {
+  color: #9fb8a6;
+}
+
+.top-stats .streak.active span {
+  color: #f0c534;
+}
+
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.badge-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #b9cfc0;
+}
+
+.badge-card.earned {
+  border-color: rgba(240, 197, 52, 0.55);
+  background: rgba(240, 197, 52, 0.1);
+  color: #f6e9b8;
+}
+
+.badge-card strong {
+  display: block;
+  font-size: 14px;
+}
+
+.badge-card small {
+  display: block;
+  font-size: 12px;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+.badge-card .badge-progress {
+  margin-left: auto;
+  font-size: 12px;
+  color: #9fb8a6;
+  white-space: nowrap;
+}
+
+/* Полировка по фидбеку: стартовый диалог, квиз, статистика, панель, легенда */
+
+/* 1. Кнопки стартового диалога переносятся, а не обрезаются */
+.start-actions {
+  flex-wrap: wrap;
+}
+
+.start-actions .session-choice {
+  flex: 1 1 100%;
+  margin-right: 0;
+}
+
+.start-actions button {
+  flex: 1 1 calc(50% - 10px);
+  min-width: 150px;
+}
+
+/* 2. Квиз: больше воздуха внутри карточек */
+.rules-quiz-card {
+  padding: 4px 2px;
+}
+
+.rules-quiz-question {
+  margin: 0 0 16px;
+  padding: 0 2px;
+}
+
+.rules-quiz-answer {
+  padding: 14px 18px;
+  line-height: 1.45;
+}
+
+.rules-quiz-explanation {
+  padding: 14px 16px;
+}
+
+/* 3. Статистика: бейджи отделены от списка повторов */
+.badges-title {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(219, 244, 222, 0.12);
+}
+
+.weak-levels {
+  margin-bottom: 4px;
+}
+
+/* 4. Компактная строка панели «Тренировка» */
+.summary-line {
+  margin: 10px 0 12px;
+  color: #a8bbae;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* 5. Компактная легенда результата: чипы в строку */
+.result-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  width: auto;
+  max-width: min(520px, 44vw);
+  font-size: 11px;
+  padding: 6px 10px;
+}
+
+.result-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+@media (max-width: 820px) {
+  .result-legend {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .result-summary.with-legend {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "action"
+      "legend";
+    min-width: 0;
+    justify-items: stretch;
+  }
+}
+
+/* Итоги тренировки и меню-дополнения */
+.summary-modal {
+  max-width: 480px;
+}
+
+.session-summary {
+  display: grid;
+  gap: 2px;
+}
+
+.session-summary-note {
+  margin: 12px 0 4px;
+  color: #c9dccf;
+  line-height: 1.45;
+}
+
+.records-line {
+  display: block;
+  margin-top: 6px;
+  color: #9fb8a6;
+  font-size: 13px;
+}
+
+.day-training-button {
+  border: 1px solid rgba(155, 228, 122, 0.5);
+}
+
+.top-actions .icon-only {
+  min-width: 44px;
+  padding: 10px;
+}
+
+/* Решение на подаче */
+.exit-decision {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+
+.exit-decision > span {
+  color: #a8bbae;
+  font-size: 13px;
+}
+
+.exit-decision-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.exit-decision-buttons button {
+  font-size: 14px;
+  border: 1px solid rgba(219, 244, 222, 0.18);
+}
+
+.exit-decision-buttons button.active {
+  background: #2f6b45;
+  border-color: rgba(155, 228, 122, 0.7);
+  color: #eaffee;
+}
+
+/* Перенос прогресса и баннер установки */
+.data-transfer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.data-transfer .ghost {
+  font-size: 14px;
+  min-height: 40px;
+}
+
+.install-banner {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(155, 228, 122, 0.4);
+  background: rgba(56, 130, 84, 0.16);
+  color: #dbeade;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.install-banner-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.decision-note {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 194, 87, 0.5);
+  background: rgba(150, 110, 30, 0.16);
+  color: #f4e6c2;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* Фиксы по фидбеку: кнопки баннера одинаковые, отступы в итогах */
+.install-banner-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.install-banner-actions button {
+  width: 100%;
+  min-width: 0;
+}
+
+.summary-modal .session-summary {
+  padding: 6px 6px 2px;
+}
+
+.summary-modal .summary-row {
+  padding: 12px 4px;
+  gap: 16px;
+}
+
+.summary-modal .session-summary-note {
+  padding: 0 4px;
+}
+
+/* Акцент на обязательном решении до ответа */
+.exit-decision {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(155, 228, 122, 0.55);
+  background: rgba(56, 130, 84, 0.14);
+}
+
+.exit-decision > span {
+  color: #cfe7d4;
+  font-weight: 700;
+}
+
+/* Серия пенальти: воздух и подписи зон */
+.shootout-modal .shootout-score {
+  padding: 2px 4px 0;
+}
+
+.shootout-hint {
+  padding: 4px 8px 8px;
+}
+
+.shootout-rule {
+  color: #9fb8a6;
+  font-size: 13px;
+}
+
+.shootout-zone {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+  font-weight: 700;
+  align-items: flex-start;
+  padding-top: 8px;
+}
+
+.shootout-zone.preview {
+  opacity: 0.55;
+  cursor: default;
+  border-style: dotted;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.shootout-zone.preview:disabled {
+  opacity: 0.55;
+}
+
+.shootout-zone.armed {
+  border-color: rgba(155, 228, 122, 0.75);
+  background: rgba(155, 228, 122, 0.12);
+}
+
+/* Кнопка меню в шапке - всегда одна строка, высота как у остальных */
+.player-chip {
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.player-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

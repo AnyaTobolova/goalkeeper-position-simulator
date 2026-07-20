@@ -1,4 +1,5 @@
-const cacheName = "goalkeeper-sim-v2";
+// При выпуске новой версии игры поднимаем номер: старый кэш удаляется на activate.
+const cacheName = "goalkeeper-sim-v3";
 const shellAssets = ["/", "/index.html", "/pwa-icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -24,11 +25,17 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Сеть в приоритете: свежая версия подтягивается всегда, кэш - запас на оффлайн.
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        const copy = response.clone();
-        caches.open(cacheName).then((cache) => cache.put(event.request, copy));
+        const sameOrigin = event.request.url.startsWith(self.location.origin);
+
+        if (response.ok && sameOrigin) {
+          const copy = response.clone();
+          caches.open(cacheName).then((cache) => cache.put(event.request, copy));
+        }
+
         return response;
       })
       .catch(() => caches.match(event.request).then((cached) => cached ?? caches.match("/index.html")))

@@ -1,19 +1,27 @@
-import { useEffect, useMemo, useState } from "react";
-import { Activity, BarChart3, BookOpen, ChevronRight, Eye, Lightbulb, Play, RotateCcw, RotateCw, Save, Settings2, Shield, Target, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Activity, Award, BarChart3, BookOpen, ChevronRight, Eye, Home, Lightbulb, ListChecks, Play, RotateCcw, RotateCw, Save, Settings2, Shield, Target, Volume2, VolumeX, X } from "lucide-react";
 import { FieldView } from "./components/FieldView";
 import { PlayerPanel } from "./components/PlayerPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { StatsPanel } from "./components/StatsPanel";
 import { checkAnswer, resolveTimeoutResult } from "./domain/evaluate";
+import { applyLevelVariation } from "./domain/variation";
+import { RulesQuiz } from "./components/RulesQuiz";
+import { PenaltyShootout } from "./components/PenaltyShootout";
+import { computeBadges, keeperRank, newlyEarnedBadges, type BadgeState } from "./domain/badges";
+import { isSoundOn, playBadge, playKick, playResult, playWhistle, setSoundOn } from "./sounds";
 import { buildFeedback, criterionStatusText } from "./domain/feedback";
 import { facingAngleToBall, normalizeAngle } from "./domain/geometry";
 import { levels } from "./domain/levels";
 import { pitchPresets } from "./domain/presets";
 import { criteriaByScenarioType, getBallSide, type CriterionKey } from "./domain/scenarios";
-import type { CheckResult, ErrorType, Level, PitchConfig, PlayerProfile, Point, Progress, ReactionTimeSeconds, TrainingMode, VisualHint, WallConfig } from "./domain/types";
+import type { CheckResult, ErrorType, Level, PitchConfig, PlayerProfile, Point, Progress, ReactionTimeSeconds, ResultKind, TrainingMode, VisualHint, WallConfig } from "./domain/types";
 import {
   loadActivePlayerId,
+  loadDayStreak,
+  loadMarathonBest,
   loadOnboardingComplete,
+  loadPenaltyBest,
   loadPitch,
   loadPlayerLastLevelIndex,
   loadPlayerProgress,
@@ -26,12 +34,16 @@ import {
   saveActivePlayerId,
   saveOnboardingComplete,
   savePitch,
+  savePenaltyBest,
   savePlayerLastLevelIndex,
   savePlayerProgress,
   saveReactionTimeSeconds,
   savePlayers,
+  saveMarathonBest,
   saveShowDimensions,
-  saveTrainingMode
+  saveTrainingMode,
+  recordDayTraining,
+  type DayStreak
 } from "./storage";
 
 const onboardingCards = [
@@ -61,9 +73,29 @@ const onboardingCards = [
     text: "После проверки смотри короткий вывод и чеклист. Кнопка «Почему так и что покажет поле» открывает объяснение прямо в разборе."
   },
   {
+    title: "Удар с исходом",
+    visual: "feedback",
+    text: "После ответа мяч летит: при ошибке - в открытый угол (гол), при правильной позиции - в тебя (сейв). Рядом видно, сколько процентов ворот было открыто нападающему."
+  },
+  {
     title: "Стенка при штрафном",
     visual: "wall",
     text: "В штрафных выбери число игроков и перетащи стенку в подсвеченную зону. Стенка закрывает часть ворот, а вратарь должен видеть мяч."
+  },
+  {
+    title: "Пенальти и правила",
+    visual: "position",
+    text: "В пенальти действует настоящее правило: до удара держи хотя бы часть одной ноги на линии ворот. Кнопка «Правила» в шапке открывает квиз по правилам вратаря."
+  },
+  {
+    title: "Режимы в меню",
+    visual: "stats",
+    text: "В меню есть «Тренировка дня» на 10 ситуаций с серией по дням, «Марафон» на очки без подсказок, «Слабые места» и «Серия пенальти». За навыки даются бейджи и растет звание вратаря."
+  },
+  {
+    title: "Решение на подаче",
+    visual: "wall",
+    text: "На навесах сначала выбери решение: «Выйду на мяч» или «Останусь в воротах». Чистую подачу во вратарскую вратарь забирает сам, в толпу выбегать нельзя."
   },
   {
     title: "Игроки и статистика",
@@ -353,8 +385,69 @@ function trainingModeTitle(mode: TrainingMode) {
   return mode === "base_position" ? "База" : "Реакция";
 }
 
+function customSessionTitle(kind?: "weak" | "day" | "marathon") {
+  if (kind === "weak") {
+    return "Слабые места";
+  }
+
+  if (kind === "day") {
+    return "Тренировка дня";
+  }
+
+  if (kind === "marathon") {
+    return "Марафон";
+  }
+
+  return null;
+}
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
+function seededShuffle<T>(items: T[], seedText: string): T[] {
+  let seed = 0;
+
+  for (let i = 0; i < seedText.length; i++) {
+    seed = (seed * 31 + seedText.charCodeAt(i)) | 0;
+  }
+
+  const result = [...items];
+
+  for (let i = result.length - 1; i > 0; i--) {
+    seed = (Math.imul(seed, 1103515245) + 12345) | 0;
+    const j = Math.abs(seed) % (i + 1);
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+
+  return result;
+}
+
+// Подборка «Тренировки дня»: слабые места + новые сценарии + закрепление.
+export function buildDayTrainingIds(progress: Progress, playerId: string, dateIso: string): string[] {
+  const seedText = `${playerId}:${dateIso}`;
+  const weak = seededShuffle(levels.filter((item) => progress[item.id]?.needsRepeat), seedText).slice(0, 4);
+  const fresh = seededShuffle(
+    levels.filter((item) => (progress[item.id]?.attempts ?? 0) === 0 && !weak.includes(item)),
+    seedText
+  ).slice(0, 10 - weak.length - 2);
+  const rest = seededShuffle(levels.filter((item) => !weak.includes(item) && !fresh.includes(item)), seedText).slice(
+    0,
+    Math.max(0, 10 - weak.length - fresh.length)
+  );
+
+  return [...weak, ...fresh, ...rest].map((item) => item.id);
+}
+
+// Марафон: 10 случайных базовых сценариев, каждый запуск - новые.
+function buildMarathonIds(): string[] {
+  const base = levels.filter((item) => item.stage !== "reaction_to_ball_owner");
+  return seededShuffle(base, `marathon:${Date.now()}`).slice(0, 10).map((item) => item.id);
+}
+
+const baseLevelCount = levels.filter((item) => item.stage !== "reaction_to_ball_owner").length;
+const reactionLevelCount = levels.length - baseLevelCount;
+
 function trainingModeDescription(mode: TrainingMode) {
-  return mode === "base_position" ? "49 начальных сценариев" : "18 реакционных сценариев";
+  return mode === "base_position" ? `${baseLevelCount} начальных сценариев` : `${reactionLevelCount} реакционных сценариев`;
 }
 
 function resultLabel(result: CheckResult | null) {
@@ -394,6 +487,7 @@ function fieldLegendItems(visualHints: VisualHint[]) {
     (hasHint("TOO_HIGH_ZONE") || hasHint("TOO_DEEP_ZONE")) && { kind: "red", label: "красная зона", text: "опасная глубина" },
     hasHint("BALL_TO_GOAL_LINE") && { kind: "white-line", label: "белая линия", text: "линия удара" },
     hasHint("MOVE_ARROW") && { kind: "arrow", label: "стрелка", text: "куда поправить" },
+    hasHint("CROSS_TRAJECTORY") && { kind: "blue-line", label: "голубая дуга", text: "полет подачи" },
     hasHint("BALL_MOVEMENT_PATH") && { kind: "blue-line", label: "голубой пунктир", text: "движение мяча" },
     hasHint("BALL_VISIBILITY_LINE") && { kind: "blue-line", label: "голубая линия", text: "обзор мяча" }
   ].filter(Boolean) as { kind: string; label: string; text: string }[];
@@ -915,13 +1009,15 @@ function criterionForKey(key: CriterionKey, result: CheckResult, level: Level): 
         status: depthStatus === "bad" ? "bad" : "good",
         text: depthStatus === "bad" ? "ворота потеряны" : "ворота под контролем"
       };
-    case "startingPosition":
+    case "startingPosition": {
+      const sideMiss = error === "TOO_LEFT" || error === "TOO_RIGHT";
       return {
         key,
         label: "Стартовая позиция",
-        status: depthStatus,
-        text: depthStatus === "good" ? "можно выйти на мяч" : "старт спорный"
+        status: sideMiss ? "bad" : depthStatus,
+        text: sideMiss ? "вернись в стартовую стойку" : depthStatus === "good" ? "можно выйти на мяч" : "старт спорный"
       };
+    }
     case "wall":
       return {
         key,
@@ -1109,13 +1205,74 @@ export function App() {
   const [draftReactionTimeSeconds, setDraftReactionTimeSeconds] = useState<ReactionTimeSeconds>(() => reactionTimeSeconds);
   const [reactionPhase, setReactionPhase] = useState<"waiting" | "active">("waiting");
   const [reactionTimeLeft, setReactionTimeLeft] = useState<number | null>(null);
-  const trainingLevels = useMemo(() => levels.filter((item) => (trainingMode === "base_position" ? item.stage !== "reaction_to_ball_owner" : item.stage === "reaction_to_ball_owner")), [trainingMode]);
+  const [rulesQuizOpen, setRulesQuizOpen] = useState(false);
+  const [shootoutOpen, setShootoutOpen] = useState(false);
+  const [penaltyBest, setPenaltyBest] = useState<number | null>(null);
+  const [sessionStreak, setSessionStreak] = useState(0);
+  const [soundOn, setSoundOnState] = useState(() => isSoundOn());
+  // Сначала летит мяч и виден исход (гол/сейв), и только затем появляются
+  // зоны, вердикт и разбор - как в настоящем эпизоде.
+  const [analysisRevealed, setAnalysisRevealed] = useState(true);
+  const [badgeToast, setBadgeToast] = useState<BadgeState | null>(null);
+  const badgeToastTimerRef = useRef<number | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+  // Подсказка «установи как приложение»: Chrome/Android дает событие установки,
+  // на iOS показываем инструкцию. Закрытие запоминается.
+  const [installPromptEvent, setInstallPromptEvent] = useState<(Event & { prompt: () => Promise<unknown> }) | null>(null);
+  const [installDismissed, setInstallDismissed] = useState(() => localStorage.getItem("goalkeeper-sim:install-dismissed") === "yes");
+  const isIosBrowser =
+    typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.matchMedia("(display-mode: standalone)").matches;
+
+  useEffect(() => {
+    const onBeforeInstall = (event: Event) => {
+      event.preventDefault();
+      setInstallPromptEvent(event as Event & { prompt: () => Promise<unknown> });
+    };
+
+    window.addEventListener("beforeinstallprompt", onBeforeInstall);
+    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+  }, []);
+
+  function dismissInstallBanner() {
+    localStorage.setItem("goalkeeper-sim:install-dismissed", "yes");
+    setInstallDismissed(true);
+  }
+  // Специальные сессии: «Слабые места», «Тренировка дня», «Марафон».
+  // Список сценариев фиксируется на момент запуска, чтобы не менялся по ходу.
+  const [customSession, setCustomSession] = useState<{ kind: "weak" | "day" | "marathon"; ids: string[] } | null>(null);
+  // Журнал текущей сессии для экрана итогов.
+  const [sessionLog, setSessionLog] = useState<{ levelId: string; result: ResultKind; score: number; errorType?: ErrorType }[]>([]);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [dayStreak, setDayStreak] = useState<DayStreak | null>(null);
+  const [marathonBest, setMarathonBest] = useState<number | null>(null);
+  const trainingLevels = useMemo(() => {
+    if (customSession) {
+      const sessionLevels = customSession.ids
+        .map((id) => levels.find((item) => item.id === id))
+        .filter((item): item is Level => Boolean(item));
+
+      if (sessionLevels.length > 0) {
+        return sessionLevels;
+      }
+    }
+
+    return levels.filter((item) => (trainingMode === "base_position" ? item.stage !== "reaction_to_ball_owner" : item.stage === "reaction_to_ball_owner"));
+  }, [trainingMode, customSession]);
   const rawLevel = trainingLevels[Math.min(levelIndex, trainingLevels.length - 1)] ?? trainingLevels[0] ?? levels[0];
+  // Вариация координат фиксируется при входе в уровень (по числу прошлых попыток),
+  // чтобы поле не менялось между ответом и разбором.
+  const variationRef = useRef<{ levelId: string; attempt: number } | null>(null);
+
+  if (variationRef.current?.levelId !== rawLevel.id) {
+    variationRef.current = { levelId: rawLevel.id, attempt: progress[rawLevel.id]?.attempts ?? 0 };
+  }
+
+  const variationAttempt = variationRef.current.attempt;
   // Пенальти пробивается с точки пенальти активного пресета,
   // поэтому мяч и бьющий подгоняются под разметку.
-  const level = useMemo<Level>(() => {
+  const preparedLevel = useMemo<Level>(() => {
     if (rawLevel.scenarioType !== "penalty") {
-      return rawLevel;
+      return applyLevelVariation(rawLevel, variationAttempt);
     }
 
     const levelPitch = rawLevel.pitchPresetOverride ? pitchPresets[rawLevel.pitchPresetOverride] : pitch;
@@ -1132,7 +1289,29 @@ export function App() {
       ball: { x: 50, y: spotY },
       players: rawLevel.players.map((player) => (player.hasBall ? { ...player, y: spotY + 4 } : player))
     };
-  }, [pitch, rawLevel]);
+  }, [pitch, rawLevel, variationAttempt]);
+  // Пас во время отсчета: после срабатывания мяч уходит к другому игроку,
+  // старая точка мяча остается для проверки перестроения.
+  const [reactionPassDone, setReactionPassDone] = useState(false);
+  const [exitChoice, setExitChoice] = useState<"go" | "stay" | null>(null);
+  const level = useMemo<Level>(() => {
+    if (!reactionPassDone || !preparedLevel.reactionPass) {
+      return preparedLevel;
+    }
+
+    const receiver = preparedLevel.players.find((player) => player.id === preparedLevel.reactionPass?.toPlayerId);
+
+    if (!receiver) {
+      return preparedLevel;
+    }
+
+    return {
+      ...preparedLevel,
+      previousBall: preparedLevel.ball,
+      ball: { x: receiver.x, y: receiver.y },
+      activatedBallOwnerId: receiver.id
+    };
+  }, [preparedLevel, reactionPassDone]);
   const isReactionLevel = level.stage === "reaction_to_ball_owner";
   const effectiveReactionSeconds = isReactionLevel ? reactionTimeSeconds : null;
   const reactionActive = !isReactionLevel || reactionPhase === "active" || Boolean(result);
@@ -1154,11 +1333,31 @@ export function App() {
   const savedLevelIndex = Math.min(trainingLevels.length - 1, loadPlayerLastLevelIndex(activePlayerId, trainingMode));
   const hasTrainingToContinue = savedLevelIndex > 0 || trainingLevels.some((item) => (progress[item.id]?.attempts ?? 0) > 0);
   const feedback = useMemo(() => (result ? buildFeedback(result, level) : null), [level, result]);
-  const visibleFieldLegend = useMemo(() => fieldLegendItems(feedback?.visualHints ?? []), [feedback]);
+  const shownFeedback = analysisRevealed ? feedback : null;
+  const visibleFieldLegend = useMemo(() => fieldLegendItems(shownFeedback?.visualHints ?? []), [shownFeedback]);
+  const marathonScore = useMemo(
+    () => (customSession?.kind === "marathon" ? sessionLog.reduce((sum, item) => sum + item.score, 0) : null),
+    [customSession, sessionLog]
+  );
+
+  useEffect(() => {
+    // Скрытие выставляется синхронно в submitAnswer (иначе разметка мигает
+    // один кадр); здесь только раскрытие после полета мяча.
+    if (!result || analysisRevealed) {
+      return;
+    }
+
+    const revealTimer = window.setTimeout(() => setAnalysisRevealed(true), 1300);
+
+    return () => window.clearTimeout(revealTimer);
+  }, [result, analysisRevealed]);
   const statsProgressByPlayer = useMemo(() => {
     return Object.fromEntries(players.map((player) => [player.id, player.id === activePlayerId ? progress : loadPlayerProgress(player.id)]));
   }, [activePlayerId, players, progress, statsRefreshKey]);
   const statsPlayer = players.find((player) => player.id === statsPlayerId) ?? activePlayer;
+
+  const weakSpotsCount = useMemo(() => levels.filter((item) => progress[item.id]?.needsRepeat).length, [progress]);
+  const masteredAllCount = useMemo(() => levels.filter((item) => (progress[item.id]?.correctStreak ?? 0) >= 2).length, [progress]);
 
   const weakTopic = useMemo(() => {
     const repeated = trainingLevels.find((item) => progress[item.id]?.needsRepeat);
@@ -1178,6 +1377,10 @@ export function App() {
     setHintVisible(false);
     setWhyVisible(false);
     setStatsPlayerId(activePlayerId);
+    setPenaltyBest(loadPenaltyBest(activePlayerId));
+    setDayStreak(loadDayStreak(activePlayerId));
+    setMarathonBest(loadMarathonBest(activePlayerId));
+    setSessionLog([]);
   }, [activePlayerId]);
 
   useEffect(() => {
@@ -1201,9 +1404,14 @@ export function App() {
   }, [showDimensions]);
 
   useEffect(() => {
+    if (customSession) {
+      moveToLevel(0, false);
+      return;
+    }
+
     const nextIndex = Math.min(trainingLevels.length - 1, loadPlayerLastLevelIndex(activePlayerId, trainingMode));
     moveToLevel(nextIndex, false);
-  }, [activePlayerId, trainingMode, trainingLevels.length]);
+  }, [activePlayerId, trainingMode, trainingLevels.length, customSession]);
 
   useEffect(() => {
     if (!playerSelected) {
@@ -1223,6 +1431,7 @@ export function App() {
     const activationTimer = window.setTimeout(() => {
       setReactionPhase("active");
       setReactionTimeLeft(effectiveReactionSeconds);
+      playWhistle();
     }, level.ballOwnerActivationDelayMs ?? 1200);
 
     return () => window.clearTimeout(activationTimer);
@@ -1238,12 +1447,18 @@ export function App() {
       return;
     }
 
+    // Пас во время отсчета: мяч уходит к другому игроку, таймер продолжает идти.
+    if (level.reactionPass && !reactionPassDone && reactionTimeLeft <= level.reactionPass.atRemainingSeconds) {
+      setReactionPassDone(true);
+      playKick(0);
+    }
+
     const countdownTimer = window.setTimeout(() => {
       setReactionTimeLeft((current) => (current === null ? current : Math.max(0, current - 1)));
     }, 1000);
 
     return () => window.clearTimeout(countdownTimer);
-  }, [isReactionLevel, reactionPhase, reactionTimeLeft, result]);
+  }, [isReactionLevel, reactionPhase, reactionTimeLeft, result, level.reactionPass, reactionPassDone]);
 
   function moveToLevel(nextIndex: number, shouldSave = true) {
     const safeIndex = Math.max(0, Math.min(trainingLevels.length - 1, nextIndex));
@@ -1258,22 +1473,52 @@ export function App() {
     setWhyVisible(false);
     setReactionPhase(nextLevel.stage === "reaction_to_ball_owner" ? "waiting" : "active");
     setReactionTimeLeft(null);
+    setReactionPassDone(false);
+    setExitChoice(null);
 
-    if (shouldSave) {
+    if (shouldSave && !customSession) {
       savePlayerLastLevelIndex(activePlayerId, safeIndex, trainingMode);
     }
   }
 
   function changeTrainingMode(mode: TrainingMode) {
-    if (mode === trainingMode) {
+    if (mode === trainingMode && !customSession) {
       return;
     }
 
+    setCustomSession(null);
+    setSessionLog([]);
     setTrainingMode(mode);
   }
 
   function startTraining(mode: "restart" | "continue") {
+    setCustomSession(null);
+    setSessionLog([]);
     moveToLevel(mode === "continue" ? savedLevelIndex : 0);
+    setPlayerSelected(true);
+  }
+
+  function startWeakSpots() {
+    const ids = levels.filter((item) => progress[item.id]?.needsRepeat).map((item) => item.id);
+
+    if (ids.length === 0) {
+      return;
+    }
+
+    setCustomSession({ kind: "weak", ids });
+    setSessionLog([]);
+    setPlayerSelected(true);
+  }
+
+  function startDayTraining() {
+    setCustomSession({ kind: "day", ids: buildDayTrainingIds(progress, activePlayerId, todayIso()) });
+    setSessionLog([]);
+    setPlayerSelected(true);
+  }
+
+  function startMarathon() {
+    setCustomSession({ kind: "marathon", ids: buildMarathonIds() });
+    setSessionLog([]);
     setPlayerSelected(true);
   }
 
@@ -1283,17 +1528,159 @@ export function App() {
     }
 
     const checked = checkAnswer(goalkeeper, level, activePitch, goalkeeperFacing, level.freeKick ? wall : undefined);
-    const finalResult = reason === "timeout" ? resolveTimeoutResult(checked, goalkeeper, startGoalkeeperForLevel(level, levelIndex)) : checked;
+    let finalResult = reason === "timeout" ? resolveTimeoutResult(checked, goalkeeper, startGoalkeeperForLevel(level, levelIndex)) : checked;
 
+    // Решение на подаче важнее точки ног: неверный выбор не может дать «Отлично».
+    if (level.exitDecision && exitChoice && exitChoice !== level.exitDecision) {
+      const decisionText =
+        level.exitDecision === "go"
+          ? "Подача чистая и летит во вратарскую - здесь вратарь должен выходить на мяч, а не ждать на линии."
+          : "В этой подаче выход рискованный: сначала контроль ворот, выходить можно только на чистый мяч.";
+
+      finalResult = {
+        ...finalResult,
+        result: finalResult.result === "dangerous" ? "dangerous" : "wrong",
+        score: Math.min(finalResult.score, 55),
+        text: decisionText,
+        repeat: true,
+        evaluation: {
+          ...finalResult.evaluation,
+          notes: [...finalResult.evaluation.notes, "Решение на подаче выбрано неверно."]
+        }
+      };
+    }
+    const nextProgress = updateProgress(progress, level, finalResult);
+    const earnedBadges = newlyEarnedBadges(computeBadges(progress, levels, penaltyBest), computeBadges(nextProgress, levels, penaltyBest));
+
+    setAnalysisRevealed(!finalResult.evaluation.openShotTarget);
     setResult(finalResult);
     setWhyVisible(false);
     setReactionTimeLeft(null);
-    setProgress((current) => updateProgress(current, level, finalResult));
+    setProgress(nextProgress);
+    setSessionStreak((current) => (finalResult.result === "correct" ? current + 1 : 0));
+    setSessionLog((current) => [
+      ...current,
+      { levelId: level.id, result: finalResult.result, score: finalResult.score, errorType: finalResult.errorType ?? finalResult.evaluation.mainErrorType }
+    ]);
+
+    // Удар в момент старта полета мяча, звук результата - когда мяч долетел.
+    if (finalResult.evaluation.openShotTarget) {
+      playKick(0.38);
+      playResult(finalResult.result, 1.05);
+    } else {
+      playResult(finalResult.result, 0.15);
+    }
+
+    if (earnedBadges.length > 0) {
+      showBadgeToast(earnedBadges[0]);
+    }
+  }
+
+  // Перенос прогресса между устройствами: все ключи игры из localStorage в файл и обратно.
+  function exportProgress() {
+    const entries: Record<string, string> = {};
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+
+      if (key?.startsWith("goalkeeper-sim:")) {
+        entries[key] = localStorage.getItem(key) ?? "";
+      }
+    }
+
+    const payload = JSON.stringify({ app: "goalkeeper-sim", version: 1, exportedAt: new Date().toISOString(), entries }, null, 2);
+    const blob = new Blob([payload], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `keeper-progress-${todayIso()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function importProgress(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result)) as { app?: string; entries?: Record<string, string> };
+
+        if (parsed.app !== "goalkeeper-sim" || !parsed.entries || typeof parsed.entries !== "object") {
+          window.alert("Это не файл прогресса игры.");
+          return;
+        }
+
+        if (!window.confirm("Загрузка файла заменит текущий прогресс на этом устройстве. Продолжить?")) {
+          return;
+        }
+
+        Object.entries(parsed.entries).forEach(([key, value]) => {
+          if (key.startsWith("goalkeeper-sim:") && typeof value === "string") {
+            localStorage.setItem(key, value);
+          }
+        });
+
+        window.location.reload();
+      } catch {
+        window.alert("Не удалось прочитать файл прогресса.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function showBadgeToast(badge: BadgeState) {
+    if (badgeToastTimerRef.current !== null) {
+      window.clearTimeout(badgeToastTimerRef.current);
+    }
+
+    setBadgeToast(badge);
+    playBadge();
+    badgeToastTimerRef.current = window.setTimeout(() => setBadgeToast(null), 4500);
   }
 
   function nextLevel() {
+    // Спецсессии идут строго по порядку без возврата ошибок:
+    // следующий неотвеченный сценарий, а когда все решены - итоги.
+    if (customSession) {
+      const answered = new Set(sessionLog.map((item) => item.levelId));
+      const nextIndex = trainingLevels.findIndex((item) => !answered.has(item.id));
+
+      if (nextIndex === -1) {
+        finishSession();
+        return;
+      }
+
+      moveToLevel(nextIndex);
+      return;
+    }
+
     const nextIndex = getNextLevelIndex(levelIndex, progress, trainingLevels);
     moveToLevel(nextIndex);
+  }
+
+  function finishSession() {
+    // Серия дней и рекорд марафона засчитываются только за полностью
+    // пройденную сессию, а не за досрочно открытые итоги.
+    const answered = new Set(sessionLog.map((item) => item.levelId));
+    const sessionComplete = customSession ? customSession.ids.every((id) => answered.has(id)) : false;
+
+    if (customSession?.kind === "day" && sessionComplete) {
+      setDayStreak(recordDayTraining(activePlayerId, todayIso()));
+    }
+
+    if (customSession?.kind === "marathon" && sessionComplete) {
+      const score = sessionLog.reduce((sum, item) => sum + item.score, 0);
+      saveMarathonBest(activePlayerId, score);
+      setMarathonBest(loadMarathonBest(activePlayerId));
+    }
+
+    setSummaryOpen(true);
   }
 
   function resetLevel() {
@@ -1306,6 +1693,8 @@ export function App() {
     setWhyVisible(false);
     setReactionPhase(isReactionLevel ? "waiting" : "active");
     setReactionTimeLeft(null);
+    setReactionPassDone(false);
+    setExitChoice(null);
   }
 
   function rotateGoalkeeper(delta: number) {
@@ -1429,8 +1818,40 @@ export function App() {
             <span>{trainingLevels.length}</span>
             <small>ситуаций</small>
           </div>
+          {marathonScore !== null ? (
+            <div className="streak active" title="Очки марафона: сумма баллов за точность в 10 ситуациях (до 100 за ситуацию).">
+              <span>{marathonScore}</span>
+              <small>очки марафона</small>
+            </div>
+          ) : (
+            <div className={sessionStreak > 0 ? "streak active" : "streak"} title="Сколько ответов «Отлично» подряд. Ошибка обнуляет серию.">
+              <span>{sessionStreak}</span>
+              <small>верных подряд</small>
+            </div>
+          )}
         </div>
         <div className="top-actions">
+          <button type="button" className="player-chip" title="Главное меню: смена игрока, блоки, серия пенальти" onClick={() => setPlayerSelected(false)}>
+            <Home size={18} />
+            <span>Меню · {activePlayer?.name ?? "Игрок"}</span>
+          </button>
+          <button
+            type="button"
+            className="icon-only"
+            title={soundOn ? "Выключить звук" : "Включить звук"}
+            aria-label={soundOn ? "Выключить звук" : "Включить звук"}
+            onClick={() => {
+              const next = !soundOn;
+              setSoundOn(next);
+              setSoundOnState(next);
+            }}
+          >
+            {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+          </button>
+          <button type="button" onClick={() => setRulesQuizOpen(true)}>
+            <ListChecks size={18} />
+            <span>Правила</span>
+          </button>
           <button type="button" onClick={openOnboarding}>
             <BookOpen size={18} />
             <span>Обучение</span>
@@ -1454,7 +1875,7 @@ export function App() {
               <h2>{level.title}</h2>
             </div>
             <div className={`result-summary ${visibleFieldLegend.length > 0 ? "with-legend" : ""}`}>
-              <div className={`result-pill ${resultClass(result)}`}>{resultLabel(result)}</div>
+              <div className={`result-pill ${analysisRevealed ? resultClass(result) : ""}`}>{result && !analysisRevealed ? "Удар..." : resultLabel(result)}</div>
               {visibleFieldLegend.length > 0 && (
                 <div className="result-legend" aria-label="Обозначения на поле">
                   {visibleFieldLegend.map((item) => (
@@ -1484,7 +1905,7 @@ export function App() {
             goalkeeperFacing={goalkeeperFacing}
             result={result}
             showDimensions={showDimensions}
-            visualHints={feedback?.visualHints ?? []}
+            visualHints={shownFeedback?.visualHints ?? []}
             hideBall={isReactionLevel && !reactionActive}
             wall={level.freeKick ? wall : undefined}
             onGoalkeeperChange={(point) => {
@@ -1520,13 +1941,39 @@ export function App() {
             )}
 
             <p className="coach-text">
-              {feedback
-                ? feedback.summary
-                : isReactionLevel && reactionPhase === "waiting"
+              {result
+                ? shownFeedback
+                  ? shownFeedback.summary
+                  : "Смотрим удар..."
+                : customSession?.kind === "marathon"
+                  ? `Марафон: 10 случайных ситуаций без подсказок. За точность даются очки - сейчас у тебя ${marathonScore ?? 0}.`
+                  : isReactionLevel && reactionPhase === "waiting"
                   ? `${activePlayer?.name ?? "Игрок"}, сначала прочитай расстановку. Мяч появится через мгновение.`
                   : `${activePlayer?.name ?? "Игрок"}, выбери позицию до удара.`}
             </p>
-            {feedback && result && (
+            {result && analysisRevealed && level.exitDecision && exitChoice && exitChoice !== level.exitDecision && (
+              <p className="decision-note">
+                {level.exitDecision === "go"
+                  ? "Решение: подача чистая, во вратарской никто не мешает - такой мяч вратарь забирает сам. Правильный выбор - «Выйду на мяч»."
+                  : "Решение: траектория спорная и вокруг игроки - выходить рискованно. Правильный выбор - «Останусь в воротах»."}
+              </p>
+            )}
+            {shownFeedback && result && result.evaluation.openGoalPercent !== undefined && (
+              <div className="open-goal-row" aria-label="Открытая часть ворот">
+                <span>
+                  Нападающему открыто <strong>{result.evaluation.openGoalPercent}%</strong> ворот
+                </span>
+                {result.evaluation.optimalOpenGoalPercent !== undefined && result.evaluation.optimalOpenGoalPercent < (result.evaluation.openGoalPercent ?? 0) && (
+                  <span className="open-goal-best">
+                    из лучшей точки - {result.evaluation.optimalOpenGoalPercent}%
+                    {(result.evaluation.openGoalPercent ?? 0) - result.evaluation.optimalOpenGoalPercent >= 15
+                      ? " (разница - открытый из-за смещения угол)"
+                      : ""}
+                  </span>
+                )}
+              </div>
+            )}
+            {shownFeedback && result && (
               <>
                 <div className="why-toggle-row">
                   <button className={`why-toggle ${whyVisible ? "active" : ""}`} type="button" onClick={() => setWhyVisible((current) => !current)}>
@@ -1537,12 +1984,12 @@ export function App() {
                 {whyVisible && (
                   <div className="why-card">
                     <strong>Почему так</strong>
-                    <span>{feedback.details?.why}</span>
-                    <span>{feedback.details?.howToFix}</span>
+                    <span>{shownFeedback.details?.why}</span>
+                    <span>{shownFeedback.details?.howToFix}</span>
                   </div>
                 )}
                 <div className="criteria-list" aria-label="Разбор решения">
-                  {feedback.criteria.map((criterion) => (
+                  {shownFeedback.criteria.map((criterion) => (
                     <div className="criterion-row" key={criterion.key}>
                       <span className={`criterion-status ${criterion.status}`}>{criterionStatusText(criterion.status)}</span>
                       <div>
@@ -1552,9 +1999,9 @@ export function App() {
                     </div>
                   ))}
                 </div>
-                {whyVisible && criteriaLegendItems(feedback.criteria).length > 0 && (
+                {whyVisible && criteriaLegendItems(shownFeedback.criteria).length > 0 && (
                   <div className="zone-legend" aria-label="Обозначения зон">
-                    {criteriaLegendItems(feedback.criteria).map((item) => (
+                    {criteriaLegendItems(shownFeedback.criteria).map((item) => (
                       <span key={item.kind}>
                         <i className={`legend-dot ${item.kind}`} />
                         {item.text}
@@ -1564,7 +2011,7 @@ export function App() {
                 )}
                 <div className="how-card">
                   <strong>{result.result === "correct" ? "Как закрепить" : "Как поправить"}</strong>
-                  <span>{feedback.mainAdvice}</span>
+                  <span>{shownFeedback.mainAdvice}</span>
                 </div>
               </>
             )}
@@ -1597,6 +2044,20 @@ export function App() {
               </div>
             )}
 
+            {!result && level.exitDecision && (
+              <div className="exit-decision" aria-label="Решение на подаче">
+                <span>Твое решение:</span>
+                <div className="exit-decision-buttons">
+                  <button type="button" className={exitChoice === "go" ? "active" : ""} onClick={() => setExitChoice("go")}>
+                    Выйду на мяч
+                  </button>
+                  <button type="button" className={exitChoice === "stay" ? "active" : ""} onClick={() => setExitChoice("stay")}>
+                    Останусь в воротах
+                  </button>
+                </div>
+              </div>
+            )}
+
             {!result && (
               <div className="turn-control">
                 <span>Корпус</span>
@@ -1615,9 +2076,9 @@ export function App() {
 
             <div className="actions">
               {!result ? (
-                <button className="primary" type="button" onClick={() => submitAnswer()} disabled={isReactionLevel && reactionPhase !== "active"}>
+                <button className="primary" type="button" onClick={() => submitAnswer()} disabled={(isReactionLevel && reactionPhase !== "active") || Boolean(level.exitDecision && !exitChoice)}>
                   <Target size={18} />
-                  <span>Готов</span>
+                  <span>{level.exitDecision && !exitChoice ? "Сначала выбери решение" : "Готов"}</span>
                 </button>
               ) : (
                 <button className="primary" type="button" onClick={nextLevel}>
@@ -1627,10 +2088,12 @@ export function App() {
               )}
 
               {!result ? (
-                <button type="button" onClick={() => setHintVisible(true)}>
-                  <Lightbulb size={18} />
-                  <span>Подсказка</span>
-                </button>
+                customSession?.kind !== "marathon" && (
+                  <button type="button" onClick={() => setHintVisible(true)}>
+                    <Lightbulb size={18} />
+                    <span>Подсказка</span>
+                  </button>
+                )
               ) : (
                 <button type="button" onClick={() => setWhyVisible((current) => !current)}>
                   <Eye size={18} />
@@ -1651,58 +2114,36 @@ export function App() {
               <span>Тренировка</span>
             </div>
             <div className="mode-switch" aria-label="Блок тренировки">
-              <button className={trainingMode === "base_position" ? "active" : ""} type="button" onClick={() => changeTrainingMode("base_position")}>
+              <button className={trainingMode === "base_position" && !customSession ? "active" : ""} type="button" onClick={() => changeTrainingMode("base_position")}>
                 База
               </button>
-              <button className={trainingMode === "reaction_to_ball_owner" ? "active" : ""} type="button" onClick={() => changeTrainingMode("reaction_to_ball_owner")}>
+              <button className={trainingMode === "reaction_to_ball_owner" && !customSession ? "active" : ""} type="button" onClick={() => changeTrainingMode("reaction_to_ball_owner")}>
                 Реакция
               </button>
             </div>
-            <div className="summary-row">
-              <span>Игрок</span>
-              <strong>{activePlayer?.name}</strong>
-            </div>
-            <div className="summary-row">
-              <span>Ситуация</span>
-              <strong>
-                {levelIndex + 1}/{trainingLevels.length}
-              </strong>
-            </div>
-            <div className="summary-row">
-              <span>Блок</span>
-              <strong>{trainingModeTitle(trainingMode)}</strong>
-            </div>
-            {trainingMode === "reaction_to_ball_owner" && (
-              <div className="summary-row">
-                <span>Время</span>
-                <strong>{reactionTimeSeconds} сек.</strong>
-              </div>
-            )}
-            <div className="summary-row">
-              <span>Сценарии</span>
-              <strong>{trainingModeDescription(trainingMode)}</strong>
-            </div>
-            <div className="summary-row">
-              <span>Формат</span>
-              <strong>{activePitch.name}</strong>
-            </div>
+            <p className="summary-line">
+              {customSessionTitle(customSession?.kind) ?? trainingModeTitle(trainingMode)} · {levelIndex + 1}/{trainingLevels.length}
+              {trainingMode === "reaction_to_ball_owner" ? ` · ${reactionTimeSeconds} сек.` : ""} · {activePitch.name}
+            </p>
             <button type="button" className="ghost" onClick={() => setShowDimensions(!showDimensions)}>
               <Eye size={17} />
               <span>{showDimensions ? "Скрыть размеры" : "Показать размеры"}</span>
             </button>
-            <button type="button" className="ghost" onClick={openOnboarding}>
-              <Lightbulb size={17} />
-              <span>Обучение</span>
-            </button>
+            {sessionLog.length > 0 && (
+              <button type="button" className="ghost" onClick={finishSession}>
+                <BarChart3 size={17} />
+                <span>Итоги тренировки</span>
+              </button>
+            )}
           </section>
         </aside>
       </section>
 
       <div className={`mobile-action-bar ${result ? "after-result" : ""}`} aria-label="Действия тренировки">
         {!result ? (
-          <button className="primary" type="button" onClick={() => submitAnswer()} disabled={isReactionLevel && reactionPhase !== "active"}>
+          <button className="primary" type="button" onClick={() => submitAnswer()} disabled={(isReactionLevel && reactionPhase !== "active") || Boolean(level.exitDecision && !exitChoice)}>
             <Target size={18} />
-            <span>Готов</span>
+            <span>{level.exitDecision && !exitChoice ? "Сначала выбери решение" : "Готов"}</span>
           </button>
         ) : (
           <button className="primary" type="button" onClick={nextLevel}>
@@ -1711,7 +2152,7 @@ export function App() {
           </button>
         )}
 
-        {!result && (
+        {!result && customSession?.kind !== "marathon" && (
           <button className="secondary" type="button" aria-label="Подсказка" onClick={() => setHintVisible(true)}>
             <Lightbulb size={18} />
             <span>Подсказка</span>
@@ -1773,12 +2214,15 @@ export function App() {
 
       {!playerSelected && (
         <div className="modal-backdrop start-backdrop" role="presentation">
-          <section className="modal start-modal" role="dialog" aria-modal="true" aria-label="Выбор игрока">
+          <section className="modal start-modal" role="dialog" aria-modal="true" aria-label="Главное меню">
             <div className="modal-header">
               <div>
-                <div className="eyebrow">Перед тренировкой</div>
+                <div className="eyebrow">Главное меню</div>
                 <h2>Кто сегодня тренируется?</h2>
               </div>
+              <button className="icon-button" type="button" aria-label="Вернуться к тренировке" title="Вернуться к тренировке" onClick={() => setPlayerSelected(true)}>
+                <X size={20} />
+              </button>
             </div>
             <div className="modal-grid single">
               <PlayerPanel
@@ -1791,23 +2235,66 @@ export function App() {
                 onDeletePlayer={deleteActivePlayer}
               />
             </div>
+            {!installDismissed && (installPromptEvent || isIosBrowser) && (
+              <div className="install-banner">
+                <span>
+                  {installPromptEvent
+                    ? "Игру можно установить на главный экран - она откроется как обычное приложение."
+                    : "На iPhone/iPad: нажми «Поделиться», затем «На экран Домой» - игра станет приложением."}
+                </span>
+                <div className="install-banner-actions">
+                  {installPromptEvent && (
+                    <button
+                      type="button"
+                      className="primary"
+                      onClick={() => {
+                        void installPromptEvent.prompt();
+                        dismissInstallBanner();
+                      }}
+                    >
+                      Установить
+                    </button>
+                  )}
+                  <button type="button" className="ghost" onClick={dismissInstallBanner}>
+                    Скрыть
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="data-transfer" aria-label="Перенос прогресса">
+              <button type="button" className="ghost" onClick={exportProgress}>
+                <Save size={16} />
+                <span>Прогресс в файл</span>
+              </button>
+              <button type="button" className="ghost" onClick={() => importInputRef.current?.click()}>
+                <RotateCw size={16} />
+                <span>Загрузить из файла</span>
+              </button>
+              <input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={importProgress} />
+            </div>
             <div className="start-mode-choice" aria-label="Выбор блока тренировки">
               <button className={trainingMode === "base_position" ? "active" : ""} type="button" onClick={() => changeTrainingMode("base_position")}>
                 <strong>База</strong>
-                <span>49 начальных сценариев</span>
+                <span>{baseLevelCount} начальных сценариев</span>
               </button>
               <button className={trainingMode === "reaction_to_ball_owner" ? "active" : ""} type="button" onClick={() => changeTrainingMode("reaction_to_ball_owner")}>
                 <strong>Реакция</strong>
-                <span>18 сценариев от 1 до 3 игроков</span>
+                <span>{reactionLevelCount} сценариев от 1 до 3 игроков</span>
               </button>
             </div>
-            <div className="modal-actions">
+            <div className="modal-actions start-actions">
               <div className="session-choice">
                 <span>
+                  Звание: <strong>{keeperRank(masteredAllCount)}</strong> ({masteredAllCount} из {levels.length} закреплено).{" "}
                   {hasTrainingToContinue
                     ? `Можно продолжить блок «${trainingModeTitle(trainingMode)}» с задания ${savedLevelIndex + 1} из ${trainingLevels.length}.`
                     : `В блоке «${trainingModeTitle(trainingMode)}» пока нет начатой тренировки.`}
                 </span>
+                {players.length > 1 && (
+                  <span className="records-line">
+                    Рекорды марафона: {players.map((player) => `${player.name} - ${loadMarathonBest(player.id) ?? "нет"}`).join(" · ")}
+                  </span>
+                )}
               </div>
               <button type="button" onClick={() => startTraining("restart")}>
                 <RotateCcw size={18} />
@@ -1816,6 +2303,25 @@ export function App() {
               <button className="primary" type="button" onClick={() => startTraining("continue")}>
                 <Play size={18} />
                 <span>Продолжить</span>
+              </button>
+              <button type="button" className="day-training-button" onClick={startDayTraining}>
+                <Play size={18} />
+                <span>
+                  Тренировка дня
+                  {dayStreak && dayStreak.streak > 0 ? ` · ${dayStreak.streak} дн. подряд` : ""}
+                </span>
+              </button>
+              <button type="button" onClick={startMarathon}>
+                <Activity size={18} />
+                <span>Марафон{marathonBest !== null ? ` (рекорд ${marathonBest})` : ""}</span>
+              </button>
+              <button type="button" onClick={startWeakSpots} disabled={weakSpotsCount === 0} title={weakSpotsCount === 0 ? "Пока нет сценариев на повтор" : undefined}>
+                <Target size={18} />
+                <span>Слабые места{weakSpotsCount > 0 ? ` (${weakSpotsCount})` : ""}</span>
+              </button>
+              <button type="button" onClick={() => setShootoutOpen(true)}>
+                <Award size={18} />
+                <span>Серия пенальти{penaltyBest !== null ? ` (лучшая ${penaltyBest}/5)` : ""}</span>
               </button>
             </div>
           </section>
@@ -1889,6 +2395,140 @@ export function App() {
               onClearPlayerProgress={clearStatsPlayerProgress}
             />
           </section>
+        </div>
+      )}
+
+      {rulesQuizOpen && <RulesQuiz onClose={() => setRulesQuizOpen(false)} />}
+
+      {shootoutOpen && (
+        <PenaltyShootout
+          bestScore={penaltyBest}
+          onFinish={(saves) => {
+            const badgesBefore = computeBadges(progress, levels, penaltyBest);
+            savePenaltyBest(activePlayerId, saves);
+            const nextBest = loadPenaltyBest(activePlayerId);
+            setPenaltyBest(nextBest);
+            const earnedBadges = newlyEarnedBadges(badgesBefore, computeBadges(progress, levels, nextBest));
+
+            if (earnedBadges.length > 0) {
+              showBadgeToast(earnedBadges[0]);
+            }
+          }}
+          onClose={() => setShootoutOpen(false)}
+        />
+      )}
+
+      {summaryOpen &&
+        (() => {
+          const total = sessionLog.length;
+          const excellent = sessionLog.filter((item) => item.result === "correct").length;
+          const errorCounts = new Map<ErrorType, number>();
+
+          sessionLog.forEach((item) => {
+            if (item.result !== "correct" && item.errorType) {
+              errorCounts.set(item.errorType, (errorCounts.get(item.errorType) ?? 0) + 1);
+            }
+          });
+
+          const topError = [...errorCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+          const marathonScore = sessionLog.reduce((sum, item) => sum + item.score, 0);
+          const kind = customSession?.kind;
+
+          const closeToMenu = () => {
+            setSummaryOpen(false);
+            setCustomSession(null);
+            setSessionLog([]);
+            setPlayerSelected(false);
+          };
+
+          return (
+            <div className="modal-backdrop" role="presentation">
+              <section className="modal summary-modal" role="dialog" aria-modal="true" aria-label="Итоги тренировки">
+                <div className="modal-header">
+                  <div>
+                    <div className="eyebrow">{customSessionTitle(kind) ?? "Тренировка"}</div>
+                    <h2>Итоги тренировки</h2>
+                  </div>
+                  <button className="icon-button" type="button" aria-label="Закрыть итоги" onClick={() => setSummaryOpen(false)}>
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="session-summary">
+                  <div className="summary-row">
+                    <span>Ситуаций решено</span>
+                    <strong>{total}</strong>
+                  </div>
+                  <div className="summary-row">
+                    <span>На «Отлично»</span>
+                    <strong>
+                      {excellent} из {total}
+                    </strong>
+                  </div>
+                  {kind === "marathon" && (
+                    <div className="summary-row">
+                      <span>Очки марафона</span>
+                      <strong>
+                        {sessionLog.reduce((sum, item) => sum + item.score, 0)}
+                        {marathonBest !== null ? ` (рекорд ${marathonBest})` : ""}
+                      </strong>
+                    </div>
+                  )}
+                  {kind === "marathon" && (
+                    <p className="session-summary-note">Каждая ситуация дает до 100 очков за точность позиции - максимум 1000 за марафон.</p>
+                  )}
+                  {kind === "day" && dayStreak && (
+                    <div className="summary-row">
+                      <span>Дней подряд</span>
+                      <strong>
+                        {dayStreak.streak}
+                        {dayStreak.best > dayStreak.streak ? ` (лучшая серия ${dayStreak.best})` : ""}
+                      </strong>
+                    </div>
+                  )}
+                  {topError && (
+                    <div className="summary-row">
+                      <span>Частая ошибка</span>
+                      <strong>{errorLabel(topError[0])}</strong>
+                    </div>
+                  )}
+                  <p className="session-summary-note">
+                    {excellent === total && total > 0
+                      ? "Идеальная тренировка - так держать!"
+                      : topError
+                        ? "Ошибочные ситуации вернутся на повтор. Загляни в «Слабые места»."
+                        : "Хорошая работа. Продолжай в том же духе."}
+                  </p>
+                </div>
+                <div className="modal-actions">
+                  {weakSpotsCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSummaryOpen(false);
+                        startWeakSpots();
+                      }}
+                    >
+                      <Target size={18} />
+                      <span>Слабые места</span>
+                    </button>
+                  )}
+                  <button className="primary" type="button" onClick={closeToMenu}>
+                    <Home size={18} />
+                    <span>В меню</span>
+                  </button>
+                </div>
+              </section>
+            </div>
+          );
+        })()}
+
+      {badgeToast && (
+        <div className="badge-toast" role="status">
+          <Award size={22} />
+          <div>
+            <strong>Новый бейдж: {badgeToast.title}</strong>
+            <small>{badgeToast.description}</small>
+          </div>
         </div>
       )}
     </main>

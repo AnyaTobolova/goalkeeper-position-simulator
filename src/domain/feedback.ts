@@ -369,13 +369,16 @@ function criterionForKey(key: CriterionKey, result: CheckResult, level: Level): 
         status: currentDepthStatus === "dangerous" ? "dangerous" : currentDepthStatus === "bad" ? "bad" : "good",
         text: currentDepthStatus === "good" ? "ворота под контролем" : "ворота теряются"
       };
-    case "startingPosition":
+    case "startingPosition": {
+      // На стандартах боковой уход из стойки - главная ошибка стартовой позиции.
+      const sideMiss = error === "TOO_LEFT" || error === "TOO_RIGHT";
       return {
         key,
         label: "Стартовая позиция",
-        status: currentDepthStatus,
-        text: currentDepthStatus === "good" ? "можно выйти на мяч" : "старт нужно поправить"
+        status: sideMiss ? "bad" : currentDepthStatus,
+        text: sideMiss ? "вернись в стартовую стойку" : currentDepthStatus === "good" ? "можно выйти на мяч" : "старт нужно поправить"
       };
+    }
     case "wall":
       const wallStatus = error === "NO_BALL_VISIBILITY" ? "dangerous" : scoreStatus(Math.min(result.evaluation.wallCountScore ?? 100, result.evaluation.wallPositionScore ?? 100), 85, 65);
       return {
@@ -430,7 +433,11 @@ function buildCriteria(result: CheckResult, level: Level) {
 
 function buildVisualHints(result: CheckResult, level: Level, criteria: Criterion[]): VisualHint[] {
   const error = resultError(result, level);
-  const hints = new Set<VisualHint>(["BALL_TO_GOAL_LINE", "CURRENT_BALL_POINT", "CORRECT_ZONE", "ALMOST_ZONE"]);
+  // На угловых и высоких навесах прямого удара еще нет: мяч приходит с фланга.
+  // Линия «мяч - центр ворот» и сектор угла удара здесь только запутывают,
+  // поэтому показываем зоны у ворот, траекторию подачи и обзор мяча.
+  const isAerialSetPiece = result.evaluation.scenarioType === "corner" || result.evaluation.scenarioType === "high_cross";
+  const hints = new Set<VisualHint>(isAerialSetPiece ? ["CURRENT_BALL_POINT", "CORRECT_ZONE", "ALMOST_ZONE", "CROSS_TRAJECTORY"] : ["BALL_TO_GOAL_LINE", "CURRENT_BALL_POINT", "CORRECT_ZONE", "ALMOST_ZONE"]);
 
   if (result.result !== "correct") {
     hints.add("MOVE_ARROW");
@@ -458,7 +465,7 @@ function buildVisualHints(result: CheckResult, level: Level, criteria: Criterion
     hints.add("DEFENDER_COVERAGE");
   }
 
-  if (criteria.some((criterion) => (criterion.key === "nearPost" || criterion.key === "shootingAngle") && criterion.status !== "good")) {
+  if (!isAerialSetPiece && criteria.some((criterion) => (criterion.key === "nearPost" || criterion.key === "shootingAngle") && criterion.status !== "good")) {
     hints.add("NEAR_POST_SECTOR");
   }
 

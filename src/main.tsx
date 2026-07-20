@@ -25,8 +25,13 @@ if (import.meta.env.PROD && isLocalPreview && "serviceWorker" in navigator) {
   });
 } else if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {
-      // Приложение остается рабочим и без service worker.
-    });
+    // updateViaCache: "none" - файл sw.js не должен застревать в HTTP-кэше,
+    // иначе телефон может неделями открывать старую версию игры.
+    navigator.serviceWorker
+      .register("/sw.js", { updateViaCache: "none" })
+      .then((registration) => registration.update())
+      .catch(() => {
+        // Приложение остается рабочим и без service worker.
+      });
   });
 }

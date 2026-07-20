@@ -1,5 +1,8 @@
-import { AlertTriangle, BarChart3, ListRestart, Trash2 } from "lucide-react";
+import { AlertTriangle, Award, BarChart3, ListRestart, Trash2 } from "lucide-react";
 import type { ErrorType, Level, PlayerProfile, Progress } from "../domain/types";
+import { levels as allLevels } from "../domain/levels";
+import { computeBadges } from "../domain/badges";
+import { loadPenaltyBest } from "../storage";
 
 type StatsPanelProps = {
   levels: Level[];
@@ -93,6 +96,8 @@ export function StatsPanel({ levels, players, activePlayerId, selectedPlayerId, 
   const attempts = Object.values(progress).reduce((sum, item) => sum + item.attempts, 0);
   const mistakes = Object.values(progress).reduce((sum, item) => sum + (item.wrongAttempts ?? 0) + (item.almostAttempts ?? 0), 0);
   const mastered = levels.filter((level) => progress[level.id]?.correctStreak >= 2).length;
+  const badges = computeBadges(progress, allLevels, loadPenaltyBest(selectedPlayerId));
+  const earnedBadges = badges.filter((badge) => badge.earned).length;
 
   return (
     <section className="panel stats-panel">
@@ -172,6 +177,25 @@ export function StatsPanel({ levels, players, activePlayerId, selectedPlayerId, 
           ))}
         </div>
       )}
+
+      <div className="mini-title badges-title">
+        <Award size={16} />
+        <span>
+          Бейджи: {earnedBadges}/{badges.length}
+        </span>
+      </div>
+      <div className="badges-grid">
+        {badges.map((badge) => (
+          <div className={badge.earned ? "badge-card earned" : "badge-card"} key={badge.id}>
+            <Award size={18} />
+            <div>
+              <strong>{badge.title}</strong>
+              <small>{badge.description}</small>
+            </div>
+            <span className="badge-progress">{badge.progressLabel}</span>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

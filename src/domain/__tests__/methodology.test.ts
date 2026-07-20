@@ -4,8 +4,10 @@ import { levels } from "../levels";
 import { pitchPresets } from "../presets";
 import { buildPositionZones, getZoneConfig } from "../positionZones";
 import { checkAnswer, evaluateGoalkeeper, freeKickWallZone, resolveTimeoutResult } from "../evaluate";
-import { distancePointToLine, fromMeters, goalCenter, rightPost, toMeters } from "../geometry";
+import { distancePointToLine, fromMeters, goalCenter, openGoalShare, rightPost, toMeters } from "../geometry";
 import { centralBallThreshold, getBallSide } from "../scenarios";
+import { applyLevelVariation, mirrorLevel, mirrorText } from "../variation";
+import { keeperRank } from "../badges";
 
 const pitch7 = pitchPresets["7v7"];
 
@@ -234,6 +236,87 @@ describe("реакция: игрок с мячом главный", () => {
 
     expect(resolved.errorType).not.toBe("TOO_LATE_REACTION");
     expect(resolved.evaluation.notes).toContain("Время на реакцию закончилось.");
+  });
+});
+
+describe("открытая часть ворот", () => {
+  it("правильная глубина закрывает больше ворот, чем позиция на линии", () => {
+    const level = levelById("depth-long-center");
+    const ball = toMeters(level.ball, pitch7);
+    const ideal = buildPositionZones(level, pitch7).ideal;
+    const onLine = { x: goalCenter(pitch7).x, y: 0.3 };
+
+    expect(openGoalShare(ball, ideal, pitch7)).toBeLessThan(openGoalShare(ball, onLine, pitch7));
+  });
+});
+
+describe("вариации координат при повторах", () => {
+  const level = levelById("angle-right-half");
+
+  it("первая попытка не меняет уровень", () => {
+    expect(applyLevelVariation(level, 0)).toBe(level);
+  });
+
+  it("повтор сдвигает мяч, сохраняя сторону, и детерминирован", () => {
+    const varied = applyLevelVariation(level, 2);
+
+    expect(varied.ball).not.toEqual(level.ball);
+    expect(varied.ball.x).toBeGreaterThan(52);
+    expect(applyLevelVariation(level, 2).ball).toEqual(varied.ball);
+  });
+
+  it("идеальная точка вариации тоже дает «Отлично»", () => {
+    const varied = applyLevelVariation(level, 3);
+    const result = checkAnswer(idealPercent(varied, pitch7), varied, pitch7);
+
+    expect(result.result).toBe("correct");
+  });
+});
+
+describe("зеркальные вариации", () => {
+  it("mirrorText меняет стороны и не трогает похожие слова", () => {
+    expect(mirrorText("Мяч справа, закрой правый угол")).toBe("Мяч слева, закрой левый угол");
+    expect(mirrorText("Мяч слева - сместись левее")).toBe("Мяч справа - сместись правее");
+    expect(mirrorText("Ты правильно выбрал позицию по правилам")).toBe("Ты правильно выбрал позицию по правилам");
+  });
+
+  it("зеркальный уровень корректен: координаты и цель отражены, идеал дает «Отлично»", () => {
+    const level = levelById("angle-right-half");
+    const mirrored = mirrorLevel(level);
+
+    expect(mirrored.ball.x).toBeCloseTo(100 - level.ball.x, 5);
+    expect(checkAnswer(idealPercent(mirrored, pitch7), mirrored, pitch7).result).toBe("correct");
+  });
+
+  it("зеркальный штрафной отражает цель у ворот и стенку", () => {
+    const level = levelById("free-kick-right-edge");
+    const mirrored = mirrorLevel(level);
+
+    expect(mirrored.goalTarget?.side).toBeCloseTo(-(level.goalTarget?.side ?? 0), 5);
+    expect(checkAnswer(idealPercent(mirrored, pitch7), mirrored, pitch7, undefined, recommendedWall(mirrored, pitch7)).result).toBe("correct");
+  });
+});
+
+describe("звания вратаря", () => {
+  it("растут с числом закрепленных сценариев", () => {
+    expect(keeperRank(0)).toBe("Новичок");
+    expect(keeperRank(12)).toBe("Уверенный");
+    expect(keeperRank(30)).toBe("Хозяин штрафной");
+    expect(keeperRank(50)).toBe("Стена");
+  });
+});
+
+describe("решение на подаче", () => {
+  it("уровни с чистой подачей требуют выхода, с толпой - контроля ворот", () => {
+    expect(levelById("high-cross-clean-right").exitDecision).toBe("go");
+    expect(levelById("high-cross-crowd").exitDecision).toBe("stay");
+  });
+
+  it("идеальная точка уровня с выходом заметно выше, чем у навеса в толпу", () => {
+    const goIdeal = buildPositionZones(levelById("high-cross-clean-right"), pitch7).ideal;
+    const stayIdeal = buildPositionZones(levelById("high-cross-crowd"), pitch7).ideal;
+
+    expect(goIdeal.y).toBeGreaterThan(stayIdeal.y);
   });
 });
 

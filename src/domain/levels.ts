@@ -702,6 +702,7 @@ const extraLevels: Level[] = [
   },
   {
     id: "high-cross-right-under-bar",
+    exitDecision: "stay",
     title: "Навес справа под перекладину",
     category: "cross",
     difficulty: 4,
@@ -723,6 +724,7 @@ const extraLevels: Level[] = [
   },
   {
     id: "high-cross-left-under-bar",
+    exitDecision: "stay",
     title: "Навес слева под перекладину",
     category: "cross",
     difficulty: 4,
@@ -744,6 +746,7 @@ const extraLevels: Level[] = [
   },
   {
     id: "high-cross-far-post",
+    exitDecision: "stay",
     title: "Навес на дальнюю штангу",
     category: "cross",
     difficulty: 5,
@@ -766,6 +769,7 @@ const extraLevels: Level[] = [
   },
   {
     id: "high-cross-crowd",
+    exitDecision: "stay",
     title: "Навес в толпу игроков",
     category: "cross",
     difficulty: 5,
@@ -786,6 +790,52 @@ const extraLevels: Level[] = [
     errorText: "Разберем: в толпу нельзя выбегать без уверенности, иначе ворота пустые.",
     hintText: "Если траектория спорная и впереди много игроков, сначала держи ворота.",
     evaluationMode: "zone",
+    explanationLayers: layers
+  },
+  {
+    id: "high-cross-clean-right",
+    title: "Чистая подача справа во вратарскую",
+    category: "cross",
+    exitDecision: "go",
+    difficulty: 4,
+    ball: { x: 80, y: 18 },
+    previousBall: { x: 80, y: 32 },
+    players: [
+      { id: "a1", role: "attacker", x: 80, y: 18, hasBall: true },
+      { id: "a2", role: "attacker", x: 58, y: 16 },
+      { id: "d1", role: "defender", x: 54, y: 14 }
+    ],
+    initialGoalkeeper: { x: 50, y: 1 },
+    goalTarget: { side: 0.1, depth: 3.2 },
+    mainErrorType: "TOO_DEEP",
+    successText: "Отлично: подача чистая, и ты решил выйти - мяч во вратарской должен быть твоим.",
+    almostText: "Почти: решение выйти верное, точку выхода можно выбрать увереннее.",
+    errorText: "Разберем: траектория чистая, соперников рядом нет - такой мяч вратарь забирает сам.",
+    hintText: "Никто не мешает, мяч летит во вратарскую: решай выходить и забирай подачу.",
+    evaluationMode: "hybrid",
+    explanationLayers: layers
+  },
+  {
+    id: "high-cross-clean-left",
+    title: "Чистая подача слева во вратарскую",
+    category: "cross",
+    exitDecision: "go",
+    difficulty: 4,
+    ball: { x: 20, y: 18 },
+    previousBall: { x: 20, y: 32 },
+    players: [
+      { id: "a1", role: "attacker", x: 20, y: 18, hasBall: true },
+      { id: "a2", role: "attacker", x: 42, y: 16 },
+      { id: "d1", role: "defender", x: 46, y: 14 }
+    ],
+    initialGoalkeeper: { x: 50, y: 1 },
+    goalTarget: { side: -0.1, depth: 3.2 },
+    mainErrorType: "TOO_DEEP",
+    successText: "Отлично: чистая траектория - ты вышел и хозяйничаешь во вратарской.",
+    almostText: "Почти: решение выйти правильное, добавь уверенности в точке выхода.",
+    errorText: "Разберем: когда подача чистая, оставаться на линии - значит отдать мяч сопернику.",
+    hintText: "Свободная вратарская и чистая траектория: выходи на мяч.",
+    evaluationMode: "hybrid",
     explanationLayers: layers
   },
   {
@@ -972,6 +1022,113 @@ const extraLevels: Level[] = [
     explanationLayers: layers
   },
   {
+    id: "rebound-center-to-right",
+    title: "Отскок после сейва вправо",
+    category: "pass_reposition",
+    scenarioType: "pass_or_cutback",
+    difficulty: 4,
+    ball: { x: 62, y: 12 },
+    previousBall: { x: 50, y: 20 },
+    players: [
+      { id: "a1", role: "attacker", x: 50, y: 22 },
+      { id: "a2", role: "attacker", x: 62, y: 14, hasBall: true }
+    ],
+    initialGoalkeeper: { x: 50, y: 3 },
+    mainErrorType: "NOT_ADJUSTED_AFTER_PASS",
+    successText: "Отлично: после отскока ты мгновенно нашел новую линию мяча и закрыл добивание.",
+    almostText: "Почти: ты начал перестроение к отскоку, но линию нового мяча можно занять точнее.",
+    errorText: "Разберем: мяч отскочил вправо, а позиция осталась от первого удара - добивание идет в открытые ворота.",
+    hintText: "После сейва мяч живой. Сразу ищи новую линию мяча и перестраивайся.",
+    evaluationMode: "hybrid",
+    explanationLayers: layers
+  },
+  {
+    id: "rebound-right-to-left",
+    title: "Отскок на дальнюю сторону",
+    category: "pass_reposition",
+    scenarioType: "pass_or_cutback",
+    difficulty: 5,
+    ball: { x: 40, y: 10 },
+    previousBall: { x: 64, y: 16 },
+    players: [
+      { id: "a1", role: "attacker", x: 64, y: 18 },
+      { id: "a2", role: "attacker", x: 40, y: 12, hasBall: true },
+      { id: "d1", role: "defender", x: 52, y: 12 }
+    ],
+    initialGoalkeeper: { x: 58, y: 4 },
+    mainErrorType: "NOT_ADJUSTED_AFTER_PASS",
+    successText: "Отлично: отскок ушел на другую сторону, и ты успел переставить точку ног на новую линию.",
+    almostText: "Почти: направление перестроения верное, дойди до линии нового мяча.",
+    errorText: "Разберем: после отскока на дальнюю сторону нельзя оставаться у старой штанги.",
+    hintText: "Мяч отскочил через штрафную. Новая линия мяча важнее старой позиции.",
+    evaluationMode: "hybrid",
+    explanationLayers: layers
+  },
+  {
+    id: "rebound-close-center",
+    title: "Добивание с близкой точки",
+    category: "pass_reposition",
+    scenarioType: "pass_or_cutback",
+    difficulty: 5,
+    ball: { x: 47, y: 8 },
+    previousBall: { x: 55, y: 14 },
+    players: [
+      { id: "a1", role: "attacker", x: 55, y: 16 },
+      { id: "a2", role: "attacker", x: 47, y: 10, hasBall: true }
+    ],
+    initialGoalkeeper: { x: 54, y: 3 },
+    mainErrorType: "NOT_ADJUSTED_AFTER_PASS",
+    successText: "Отлично: при близком добивании ты занял новую линию и не вылетел навстречу вслепую.",
+    almostText: "Почти: линия нового мяча рядом, добавь точности по глубине.",
+    errorText: "Разберем: добивание идет с новой точки - нужно быстро сместиться и остаться в рабочей стойке.",
+    hintText: "Близкое добивание: новая линия мяча плюс спокойная глубина.",
+    evaluationMode: "hybrid",
+    explanationLayers: layers
+  },
+  {
+    id: "sweeper-long-ball-center",
+    title: "Передача за спину защиты",
+    category: "depth",
+    scenarioType: "sweeper_position",
+    difficulty: 4,
+    ball: { x: 50, y: 62 },
+    players: [
+      { id: "a1", role: "attacker", x: 50, y: 64, hasBall: true },
+      { id: "d1", role: "defender", x: 44, y: 42 },
+      { id: "d2", role: "defender", x: 56, y: 40 }
+    ],
+    initialGoalkeeper: { x: 50, y: 2 },
+    mainErrorType: "TOO_DEEP",
+    successText: "Отлично: защита играет высоко, и ты страхуешь пространство за ее спиной.",
+    almostText: "Почти: идея верная, но для страховки длинной передачи выйди еще смелее.",
+    errorText: "Разберем: когда мяч далеко и защита высоко, вратарь на линии ворот не успеет к передаче за спину.",
+    hintText: "Мяч далеко, защита высоко: выйди из ворот и страхуй зону за защитниками.",
+    evaluationMode: "hybrid",
+    explanationLayers: layers
+  },
+  {
+    id: "sweeper-long-ball-right",
+    title: "Длинная передача справа",
+    category: "depth",
+    scenarioType: "sweeper_position",
+    difficulty: 5,
+    ball: { x: 63, y: 58 },
+    players: [
+      { id: "a1", role: "attacker", x: 63, y: 60, hasBall: true },
+      { id: "a2", role: "attacker", x: 45, y: 46 },
+      { id: "d1", role: "defender", x: 47, y: 42 },
+      { id: "d2", role: "defender", x: 58, y: 40 }
+    ],
+    initialGoalkeeper: { x: 50, y: 2 },
+    mainErrorType: "TOO_DEEP",
+    successText: "Отлично: высокая страхующая позиция по линии мяча - передача за спину уже не страшна.",
+    almostText: "Почти: глубина рабочая, но держись точнее линии мяча.",
+    errorText: "Разберем: при длинной передаче из глубины вратарь - последний защитник, из ворот выходить обязательно.",
+    hintText: "Смотри на игрока с мячом справа и страхуй зону за защитой по линии мяча.",
+    evaluationMode: "hybrid",
+    explanationLayers: layers
+  },
+  {
     id: "penalty-center",
     title: "Пенальти",
     category: "penalty",
@@ -1136,6 +1293,7 @@ const reactionLevels: Level[] = [
     reactionTimeSeconds: 4,
     ballOwnerActivationDelayMs: 1200,
     activatedBallOwnerId: "a1",
+    reactionPass: { toPlayerId: "a2", atRemainingSeconds: 2 },
     ball: { x: 70, y: 24 },
     players: [
       { id: "a1", role: "attacker", x: 70, y: 24 },
@@ -1143,10 +1301,10 @@ const reactionLevels: Level[] = [
     ],
     initialGoalkeeper: { x: 50, y: 2 },
     mainErrorType: "WRONG_BALL_OWNER",
-    successText: "Верно: ты выбрал игрока с мячом справа и не ушел к центральному без мяча.",
+    successText: "Верно: ты вел мяч глазами и после паса успел перестроиться на новую линию.",
     almostText: "Почти: главную угрозу выбрал правильно, но позицию можно уточнить.",
-    errorText: "Разберем: сейчас мяч справа, центральный игрок без мяча - только риск паса.",
-    hintText: "Смотри, у кого появился мяч. Игрок без мяча не главная угроза.",
+    errorText: "Разберем: следи за активным мячом - после паса позиция строится заново.",
+    hintText: "Смотри, у кого мяч. Он может уйти в пас - будь готов перестроиться.",
     evaluationMode: "hybrid",
     explanationLayers: layers
   },
@@ -1186,6 +1344,7 @@ const reactionLevels: Level[] = [
     reactionTimeSeconds: 4,
     ballOwnerActivationDelayMs: 1200,
     activatedBallOwnerId: "a1",
+    reactionPass: { toPlayerId: "a2", atRemainingSeconds: 2 },
     ball: { x: 30, y: 24 },
     players: [
       { id: "a1", role: "attacker", x: 30, y: 24 },
@@ -1193,10 +1352,10 @@ const reactionLevels: Level[] = [
     ],
     initialGoalkeeper: { x: 50, y: 2 },
     mainErrorType: "WRONG_BALL_OWNER",
-    successText: "Верно: ты среагировал на левого игрока с мячом и закрыл ближний угол.",
+    successText: "Верно: ты держал мяч глазами и после передачи занял новую линию.",
     almostText: "Почти: смещение верное, осталось чуть точнее выбрать глубину.",
-    errorText: "Разберем: активный мяч слева важнее центрального игрока без мяча.",
-    hintText: "Мяч слева - перестройся влево, центр без мяча только вариант паса.",
+    errorText: "Разберем: мяч ушел в пас - позиция строится от новой точки мяча.",
+    hintText: "Мяч слева, но может уйти в пас. Веди мяч глазами до самого удара.",
     evaluationMode: "hybrid",
     explanationLayers: layers
   },
@@ -1286,6 +1445,7 @@ const reactionLevels: Level[] = [
     reactionTimeSeconds: 3,
     ballOwnerActivationDelayMs: 1200,
     activatedBallOwnerId: "a2",
+    reactionPass: { toPlayerId: "a3", atRemainingSeconds: 2 },
     ball: { x: 50, y: 27 },
     players: [
       { id: "a1", role: "attacker", x: 32, y: 25 },
@@ -1294,10 +1454,10 @@ const reactionLevels: Level[] = [
     ],
     initialGoalkeeper: { x: 50, y: 2 },
     mainErrorType: "WRONG_BALL_OWNER",
-    successText: "Верно: в перегрузе ты нашел центральный мяч и удержал центр ворот.",
+    successText: "Верно: ты прочитал перегруз и после паса направо успел на новую линию.",
     almostText: "Почти: главная угроза прочитана, но глубина или корпус требуют точности.",
-    errorText: "Разберем: при мяче в центре уход к любому флангу открывает половину ворот.",
-    hintText: "Трое по дуге: сначала найди, у кого мяч.",
+    errorText: "Разберем: мяч ушел в пас на фланг - нельзя оставаться на старой линии.",
+    hintText: "Трое по дуге: найди мяч и будь готов, что он уйдет в пас.",
     evaluationMode: "hybrid",
     explanationLayers: layers
   },
@@ -1364,6 +1524,7 @@ const reactionLevels: Level[] = [
     reactionTimeSeconds: 3,
     ballOwnerActivationDelayMs: 1200,
     activatedBallOwnerId: "a1",
+    reactionPass: { toPlayerId: "a2", atRemainingSeconds: 2 },
     ball: { x: 82, y: 13 },
     players: [
       { id: "a1", role: "attacker", x: 82, y: 13 },
@@ -1372,10 +1533,10 @@ const reactionLevels: Level[] = [
     ],
     initialGoalkeeper: { x: 50, y: 2 },
     mainErrorType: "NEAR_POST_OPEN",
-    successText: "Хорошо: ты закрыл активный правый фланг и не побежал заранее на дальнюю штангу.",
+    successText: "Хорошо: ты закрыл фланг, а после отката в центр успел перестроиться.",
     almostText: "Почти: главная угроза выбрана, но позиция чуть спорная.",
-    errorText: "Разберем: дальняя штанга опасна только после паса, а сейчас мяч справа.",
-    hintText: "Правый фланг с мячом - ближняя штанга и готовность к прострелу.",
+    errorText: "Разберем: после отката в центр старая фланговая позиция открывает ворота.",
+    hintText: "Правый фланг с мячом, но следи: мяч может уйти откатом в центр.",
     evaluationMode: "hybrid",
     explanationLayers: layers
   },

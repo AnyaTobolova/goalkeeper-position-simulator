@@ -200,3 +200,72 @@ export function loadTrainingMode(): TrainingMode {
 export function saveTrainingMode(mode: TrainingMode) {
   localStorage.setItem(trainingModeKey, mode);
 }
+
+function penaltyBestKey(playerId: string) {
+  return `goalkeeper-sim:penalty-best:${playerId}`;
+}
+
+export function loadPenaltyBest(playerId: string): number | null {
+  const saved = Number(localStorage.getItem(penaltyBestKey(playerId)));
+  return Number.isFinite(saved) && saved > 0 ? Math.floor(saved) : null;
+}
+
+export function savePenaltyBest(playerId: string, saves: number) {
+  const best = loadPenaltyBest(playerId) ?? 0;
+
+  if (saves > best) {
+    localStorage.setItem(penaltyBestKey(playerId), String(Math.floor(saves)));
+  }
+}
+
+export type DayStreak = {
+  lastDate: string;
+  streak: number;
+  best: number;
+};
+
+function dayStreakKey(playerId: string) {
+  return `goalkeeper-sim:day-streak:${playerId}`;
+}
+
+export function loadDayStreak(playerId: string): DayStreak | null {
+  try {
+    const saved = localStorage.getItem(dayStreakKey(playerId));
+    return saved ? (JSON.parse(saved) as DayStreak) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Отмечает выполненную «Тренировку дня»: вчера тоже тренировался - серия растет,
+// был пропуск - серия начинается заново, сегодня уже отмечено - без изменений.
+export function recordDayTraining(playerId: string, todayIso: string): DayStreak {
+  const current = loadDayStreak(playerId);
+
+  if (current && current.lastDate === todayIso) {
+    return current;
+  }
+
+  const yesterday = new Date(new Date(`${todayIso}T12:00:00`).getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const streak = current && current.lastDate === yesterday ? current.streak + 1 : 1;
+  const next: DayStreak = { lastDate: todayIso, streak, best: Math.max(streak, current?.best ?? 0) };
+  localStorage.setItem(dayStreakKey(playerId), JSON.stringify(next));
+  return next;
+}
+
+function marathonBestKey(playerId: string) {
+  return `goalkeeper-sim:marathon-best:${playerId}`;
+}
+
+export function loadMarathonBest(playerId: string): number | null {
+  const saved = Number(localStorage.getItem(marathonBestKey(playerId)));
+  return Number.isFinite(saved) && saved > 0 ? Math.floor(saved) : null;
+}
+
+export function saveMarathonBest(playerId: string, score: number) {
+  const best = loadMarathonBest(playerId) ?? 0;
+
+  if (score > best) {
+    localStorage.setItem(marathonBestKey(playerId), String(Math.floor(score)));
+  }
+}

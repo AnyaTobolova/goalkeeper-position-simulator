@@ -178,6 +178,15 @@ export type Level = {
   reactionTimeSeconds?: ReactionTimeSeconds;
   ballOwnerActivationDelayMs?: number;
   activatedBallOwnerId?: string;
+  // Пас во время отсчета: когда осталось atRemainingSeconds, мяч уходит
+  // к игроку toPlayerId, и вратарь перестраивается за оставшееся время.
+  reactionPass?: {
+    toPlayerId: string;
+    atRemainingSeconds: number;
+  };
+  // Решение на подаче: правильный выбор «выйти на мяч» или «остаться в воротах».
+  // Неверное решение снижает результат даже при хорошей точке ног.
+  exitDecision?: "go" | "stay";
   ball: Point;
   previousBall?: Point;
   players: Player[];
@@ -229,6 +238,12 @@ export type EvaluationScore = {
   total: number;
   mainErrorType?: ErrorType;
   outsideShotAngle?: boolean;
+  // Процент ширины ворот, открытый нападающему (0-100): из выбранной позиции
+  // и из лучшей точки. Не считается для стандартов без прямого удара.
+  openGoalPercent?: number;
+  optimalOpenGoalPercent?: number;
+  // Точка на линии ворот, куда летит удар в самую открытую часть (проценты поля).
+  openShotTarget?: Point;
   goalkeeperPoint: Point;
   optimalPoint: Point;
   correctZone: Zone;

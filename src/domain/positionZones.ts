@@ -476,7 +476,9 @@ export function buildPositionZones(level: Level, pitch: PitchConfig) {
   }
 
   const axes = getLocalAxes(ball, center);
-  const baseCfg = anchoredCfg;
+  // Зеленая зона строже базового допуска: «Отлично» - это действительно
+  // лучшая позиция, а не край допустимого коридора.
+  const baseCfg = { ...anchoredCfg, correctDepthHalf: anchoredCfg.correctDepthHalf * 0.78, correctSideHalf: anchoredCfg.correctSideHalf * 0.85 };
   const correctUMin = baseCfg.idealDepth - baseCfg.correctDepthHalf;
   const correctUMax = baseCfg.idealDepth + baseCfg.correctDepthHalf;
   const correctSideHalf = cappedSideHalf(ball, center, axes, pitch, correctUMin, correctUMax, baseCfg.correctSideHalf, 0.6);

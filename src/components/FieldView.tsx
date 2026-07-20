@@ -76,11 +76,15 @@ function useCompactField() {
   return compact;
 }
 
-function PlayerFigure({ x, y, role, hasBall, scale }: { x: number; y: number; role: "attacker" | "defender"; hasBall?: boolean; scale: number }) {
+function PlayerFigure({ x, y, role, hasBall, scale, animate }: { x: number; y: number; role: "attacker" | "defender"; hasBall?: boolean; scale: number; animate?: boolean }) {
   const className = role === "attacker" ? "figure attacker-figure" : "figure defender-figure";
 
   return (
-    <g className={className} transform={`translate(${x} ${y}) scale(${scale})`}>
+    <g
+      className={className}
+      transform={animate ? undefined : `translate(${x} ${y}) scale(${scale})`}
+      style={animate ? { transform: `translate(${x}px, ${y}px) scale(${scale})`, transition: "transform 0.9s ease-out" } : undefined}
+    >
       <g transform="translate(0 -3.85)">
         {hasBall && <circle className="player-focus-ring" cx="0" cy="1.9" r="1.55" />}
         <ellipse className="figure-shadow" cx="0" cy="3.8" rx="1.75" ry="0.55" />
@@ -194,6 +198,89 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
   const wallRect = result?.evaluation.wallZone ? zoneToRect(result.evaluation.wallZone, fieldHeight) : null;
   const hasHint = (hint: VisualHint) => visualHints.includes(hint);
   const showShotAngle = result && hasHint("BALL_TO_GOAL_LINE");
+  // Удар с исходом: после оценки мяч летит в самую открытую часть ворот (гол)
+  // или во вратаря (сейв). Только для сценариев с прямым ударом.
+  const [shotProgress, setShotProgress] = useState(0);
+  const shotOutcome = (() => {
+    if (!result || hideBall || !result.evaluation.openShotTarget) {
+      return null;
+    }
+
+    const isGoal = result.result === "wrong" || result.result === "dangerous";
+
+    if (isGoal) {
+      const target = percentToSvg(result.evaluation.openShotTarget);
+      return { isGoal, target: { x: target.x, y: target.y + 2.2 } };
+    }
+
+    const toBall = { x: ball.x - keeperSvg.x, y: ball.y - keeperSvg.y };
+    const toBallLen = Math.max(0.001, Math.hypot(toBall.x, toBall.y));
+
+    return { isGoal, target: { x: keeperSvg.x + (toBall.x / toBallLen) * 1.4, y: keeperSvg.y + (toBall.y / toBallLen) * 1.4 } };
+  })();
+
+  useEffect(() => {
+    setShotProgress(0);
+
+    if (!result || !result.evaluation.openShotTarget) {
+      return;
+    }
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setShotProgress(1);
+      return;
+    }
+
+    let interval = 0;
+    const delay = window.setTimeout(() => {
+      const startTs = Date.now();
+      interval = window.setInterval(() => {
+        const t = Math.min(1, (Date.now() - startTs) / 620);
+        setShotProgress(t);
+
+        if (t >= 1) {
+          window.clearInterval(interval);
+        }
+      }, 40);
+    }, 380);
+
+    return () => {
+      window.clearTimeout(delay);
+      window.clearInterval(interval);
+    };
+  }, [result]);
+
+  const shotEase = 1 - (1 - shotProgress) ** 2;
+  const ballRender = shotOutcome ? { x: ball.x + (shotOutcome.target.x - ball.x) * shotEase, y: ball.y + (shotOutcome.target.y - ball.y) * shotEase } : ball;
+  // В блоке «Реакция» игроки не стоят на месте: до появления мяча они
+  // подъезжают на свои позиции, чтобы вратарь читал живую расстановку.
+  const reactionLevel = level.stage === "reaction_to_ball_owner";
+  const [playersEntered, setPlayersEntered] = useState(false);
+
+  useEffect(() => {
+    if (!hideBall) {
+      setPlayersEntered(true);
+      return;
+    }
+
+    setPlayersEntered(false);
+    const enterTimer = window.setTimeout(() => setPlayersEntered(true), 140);
+
+    return () => window.clearTimeout(enterTimer);
+  }, [hideBall, level.id]);
+
+  function playerDrift(id: string) {
+    let hash = 0;
+
+    for (let i = 0; i < id.length; i++) {
+      hash = (hash * 31 + id.charCodeAt(i)) | 0;
+    }
+
+    return {
+      dx: ((Math.abs(hash) % 7) - 3) * 1.8,
+      dy: 4 + (Math.abs(hash >> 3) % 5) * 1.4
+    };
+  }
   const footInsideTarget = result ? result.result === "correct" : true;
   const box = pitch.markings;
   const goalSvgX = (pitch.fieldWidth / 2 - pitch.goalWidth / 2) * scaleX;
@@ -214,7 +301,8 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
   const focusCenterX = clamp((rawFocusLeft + rawFocusRight) / 2, focusWidth / 2, viewBoxWidth - focusWidth / 2);
   const focusLeft = focusCenterX - focusWidth / 2;
   const focusTop = Math.max(0, Math.min(...importantY) - (compactField ? 7 : 10));
-  const focusBottom = fieldHeight + goalDepth + (compactField ? 3 : 6);
+  // Запас под воротами: там живет надпись исхода удара («Сейв!» / «Гол»).
+  const focusBottom = fieldHeight + goalDepth + (compactField ? 7.5 : 8);
   const focusHeight = Math.max(compactField ? 36 : 42, focusBottom - focusTop);
   const viewBox = `${focusLeft - margin} ${focusTop - margin} ${focusWidth + margin * 2} ${focusHeight + margin * 2}`;
 
@@ -459,7 +547,20 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
 
         {level.players.map((player) => {
           const p = percentToSvg(player);
-          return <PlayerFigure key={player.id} x={p.x} y={p.y} role={player.role} hasBall={player.hasBall} scale={playerScale} />;
+          const entering = reactionLevel && hideBall && !playersEntered;
+          const drift = entering ? playerDrift(player.id) : null;
+
+          return (
+            <PlayerFigure
+              key={player.id}
+              x={p.x + (drift?.dx ?? 0)}
+              y={p.y - (drift?.dy ?? 0)}
+              role={player.role}
+              hasBall={player.hasBall}
+              scale={playerScale}
+              animate={reactionLevel}
+            />
+          );
         })}
 
         {wall && wall.count > 0 && wallSvg && (
@@ -478,13 +579,18 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
           </>
         )}
 
+        {shotOutcome && shotProgress > 0 && (
+          <line className={`shot-trail ${shotOutcome.isGoal ? "goal" : "save"}`} x1={ball.x} y1={ball.y} x2={ballRender.x} y2={ballRender.y} />
+        )}
+
         {!hideBall && (
-          <g className="ball" transform={`translate(${ball.x} ${ball.y}) scale(${compactField ? 1.18 : 1})`}>
+          <g className="ball" transform={`translate(${ballRender.x} ${ballRender.y}) scale(${compactField ? 1.18 : 1})`}>
             <circle className="ball-base" cx="0" cy="0" r="1.28" />
             <path className="ball-patch" d="M 0 -0.7 L 0.66 -0.2 L 0.42 0.6 L -0.42 0.6 L -0.66 -0.2 Z" />
             <path className="ball-stitch" d="M 0 -0.7 L 0 -1.2 M 0.66 -0.2 L 1.16 -0.38 M 0.42 0.6 L 0.74 1.04 M -0.42 0.6 L -0.74 1.04 M -0.66 -0.2 L -1.16 -0.38" />
           </g>
         )}
+
 
         <circle
           className="goalkeeper-hit"
@@ -522,6 +628,28 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
             )}
           </g>
         )}
+
+        {shotOutcome &&
+          shotProgress >= 1 &&
+          (() => {
+            // Надпись живет под воротами, за пределами поля - там она ничего не закрывает.
+            const labelText = shotOutcome.isGoal ? "Гол в открытый угол" : "Сейв!";
+            const labelWidth = labelText.length * 2.05 + 6;
+            const labelX = Math.min(
+              Math.max(goalSvgX + goalSvgWidth / 2, focusLeft + labelWidth / 2 + 1),
+              focusLeft + focusWidth - labelWidth / 2 - 1
+            );
+            const labelY = fieldHeight + goalDepth + 3.6;
+
+            return (
+              <g className={`shot-label-group ${shotOutcome.isGoal ? "goal" : "save"}`}>
+                <rect x={labelX - labelWidth / 2} y={labelY - 4.2} width={labelWidth} height={6.2} rx="1.8" />
+                <text x={labelX} y={labelY} textAnchor="middle">
+                  {labelText}
+                </text>
+              </g>
+            );
+          })()}
       </svg>
     </div>
   );
