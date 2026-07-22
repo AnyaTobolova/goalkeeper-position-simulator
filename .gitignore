@@ -10,3 +10,8 @@ pnpm-debug.log*
 
 # Локальные настройки Claude Code
 .claude/settings.local.json
+ssh.txt
+*.pem
+*_key
+id_rsa*
+id_ed25519*

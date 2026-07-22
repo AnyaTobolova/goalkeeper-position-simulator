@@ -510,7 +510,10 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
                 <line className="trajectory shot-boundary" x1={ball.x} y1={ball.y} x2={rightSvg.x} y2={rightSvg.y} />
               </>
             )}
-            <g clipPath={`url(#${shotAngleClipId})`}>
+            {/* Клип по треугольнику угла удара - только для прямых ударов.
+                На угловых и навесах он вырождается в тонкий серп у флажка
+                и «смазывает» зоны, поэтому там зоны рисуются без обрезки. */}
+            <g clipPath={showShotAngle ? `url(#${shotAngleClipId})` : undefined}>
               {hasHint("TOO_DEEP_ZONE") && tooDeepZone && <ZoneCapsule zone={tooDeepZone} className={`danger-zone ${dangerZone === tooDeepZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
               {hasHint("TOO_HIGH_ZONE") && tooHighZone && <ZoneCapsule zone={tooHighZone} className={`danger-zone ${dangerZone === tooHighZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
               {hasHint("ALMOST_ZONE") && almostZone && <ZoneCapsule zone={almostZone} className="almost-zone" fieldHeight={fieldHeight} />}
