@@ -95,8 +95,9 @@ function playSequence(steps: ToneStep[], startDelay = 0, gap = 0.86) {
   }
 }
 
-// Несколько тонов одновременно (аккорд).
-function playChord(frequencies: number[], duration: number, volume: number, startDelay = 0) {
+
+// Тоны с явным смещением по времени (для перекрывающихся аккордов-фанфар).
+function playTonesAt(steps: Array<ToneStep & { atOffset: number }>, startDelay = 0) {
   const ctx = context();
   const out = dest();
 
@@ -104,15 +105,15 @@ function playChord(frequencies: number[], duration: number, volume: number, star
     return;
   }
 
-  const at = ctx.currentTime + startDelay;
+  const base = ctx.currentTime + startDelay;
 
-  for (const frequency of frequencies) {
-    playTone(ctx, out, { frequency, duration, volume, type: "triangle" }, at);
+  for (const step of steps) {
+    playTone(ctx, out, step, base + step.atOffset);
   }
 }
 
-// Мягкий шумовой «свелл» - основа для аплодисментов/оваций.
-function playCrowdSwell(delaySeconds: number, duration: number, peakVolume: number) {
+// Короткий шумовой «щелчок» - для удара по мячу.
+function clap(at: number, freq: number, v: number) {
   const ctx = context();
   const out = dest();
 
@@ -120,82 +121,89 @@ function playCrowdSwell(delaySeconds: number, duration: number, peakVolume: numb
     return;
   }
 
-  const at = ctx.currentTime + delaySeconds;
-  const length = Math.floor(ctx.sampleRate * duration);
-  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const len = Math.floor(ctx.sampleRate * 0.07);
+  const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
   const data = buffer.getChannelData(0);
 
-  for (let i = 0; i < length; i++) {
+  for (let i = 0; i < len; i++) {
     data[i] = Math.random() * 2 - 1;
   }
 
   const source = ctx.createBufferSource();
   source.buffer = buffer;
-  const filter = ctx.createBiquadFilter();
-  filter.type = "bandpass";
-  filter.frequency.value = 1400;
-  filter.Q.value = 0.6;
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.value = freq;
+  bp.Q.value = 1.1;
   const gain = ctx.createGain();
-  // Плавный подъём и спад - как нарастающие аплодисменты.
   gain.gain.setValueAtTime(0.0001, at);
-  gain.gain.linearRampToValueAtTime(peakVolume, at + duration * 0.3);
-  gain.gain.linearRampToValueAtTime(0.0001, at + duration);
+  gain.gain.linearRampToValueAtTime(v, at + 0.004);
+  gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.07);
 
-  source.connect(filter);
-  filter.connect(gain);
+  source.connect(bp);
+  bp.connect(gain);
   gain.connect(out);
   source.start(at);
-  source.stop(at + duration + 0.02);
+  source.stop(at + 0.09);
 }
 
-// Глухой удар по мячу: короткий низкий «бум».
+// Удар по мячу: «щелчок + тело» (выбранный вариант).
 export function playKick(delaySeconds = 0) {
-  playSequence([{ frequency: 170, duration: 0.13, glideTo: 52, volume: 0.6, type: "sine" }], delaySeconds);
+  const ctx = context();
+
+  if (ctx) {
+    clap(ctx.currentTime + delaySeconds, 2600, 0.4);
+  }
+
+  playSequence([{ frequency: 150, duration: 0.1, glideTo: 60, volume: 0.5, type: "sine" }], delaySeconds);
 }
 
 export function playResult(kind: ResultKind, delaySeconds = 0) {
   if (kind === "correct") {
-    // Сейв: восходящее «та-да» + овации трибун.
-    playSequence(
+    // Сейв: победная фанфара (выбранный вариант).
+    playTonesAt(
       [
-        { frequency: 523, duration: 0.12, volume: 0.5, type: "triangle" },
-        { frequency: 784, duration: 0.12, volume: 0.5, type: "triangle" }
+        { frequency: 523, atOffset: 0, duration: 0.34, volume: 0.42, type: "triangle" },
+        { frequency: 659, atOffset: 0.12, duration: 0.34, volume: 0.42, type: "triangle" },
+        { frequency: 784, atOffset: 0.24, duration: 0.34, volume: 0.42, type: "triangle" },
+        { frequency: 1047, atOffset: 0.36, duration: 0.34, volume: 0.42, type: "triangle" }
       ],
       delaySeconds
     );
-    playChord([523, 659, 784, 1047], 0.6, 0.28, delaySeconds + 0.2);
-    playCrowdSwell(delaySeconds + 0.15, 0.9, 0.5);
   } else if (kind === "almost") {
-    // Почти: короткое ободряющее двузвучие.
-    playSequence(
+    // Почти: короткая ободряющая версия фанфары.
+    playTonesAt(
       [
-        { frequency: 494, duration: 0.14, volume: 0.42, type: "triangle" },
-        { frequency: 622, duration: 0.22, volume: 0.42, type: "triangle" }
+        { frequency: 523, atOffset: 0, duration: 0.28, volume: 0.4, type: "triangle" },
+        { frequency: 784, atOffset: 0.12, duration: 0.3, volume: 0.4, type: "triangle" }
       ],
       delaySeconds
     );
-    playCrowdSwell(delaySeconds + 0.1, 0.5, 0.22);
   } else {
-    // Гол: разочарованное «оу-у» трибун, нисходящее.
-    playSequence([{ frequency: 415, duration: 0.6, glideTo: 155, volume: 0.5, type: "triangle" }], delaySeconds);
-    playSequence([{ frequency: 208, duration: 0.6, glideTo: 78, volume: 0.32, type: "sine" }], delaySeconds + 0.02);
+    // Гол: грустная труба «ва-ва-вааа» (выбранный вариант).
+    playTonesAt(
+      [
+        { frequency: 392, glideTo: 392 * 0.94, atOffset: 0, duration: 0.3, volume: 0.4, type: "sawtooth" },
+        { frequency: 349, glideTo: 349 * 0.94, atOffset: 0.18, duration: 0.3, volume: 0.4, type: "sawtooth" },
+        { frequency: 294, glideTo: 294 * 0.94, atOffset: 0.36, duration: 0.3, volume: 0.4, type: "sawtooth" },
+        { frequency: 262, glideTo: 180, atOffset: 0.54, duration: 0.5, volume: 0.42, type: "sawtooth" }
+      ],
+      delaySeconds
+    );
   }
 }
 
-// Короткая фанфара нового бейджа.
+// Новый бейдж: та же фанфара, что и на сейв.
 export function playBadge() {
-  playSequence([
-    { frequency: 523, duration: 0.12, volume: 0.42, type: "triangle" },
-    { frequency: 659, duration: 0.12, volume: 0.42, type: "triangle" },
-    { frequency: 784, duration: 0.12, volume: 0.42, type: "triangle" },
-    { frequency: 1047, duration: 0.3, volume: 0.45, type: "triangle" }
+  playTonesAt([
+    { frequency: 523, atOffset: 0, duration: 0.34, volume: 0.42, type: "triangle" },
+    { frequency: 659, atOffset: 0.12, duration: 0.34, volume: 0.42, type: "triangle" },
+    { frequency: 784, atOffset: 0.24, duration: 0.34, volume: 0.42, type: "triangle" },
+    { frequency: 1047, atOffset: 0.36, duration: 0.34, volume: 0.44, type: "triangle" }
   ]);
 }
 
-// Свисток на старте реакции: мягкий, без резкого «квадрата».
+// Свисток на старте реакции: длинный судейский (выбранный вариант).
 export function playWhistle() {
-  playSequence([
-    { frequency: 1760, duration: 0.1, volume: 0.3, type: "triangle" },
-    { frequency: 2093, duration: 0.16, volume: 0.3, type: "triangle" }
-  ]);
+  playSequence([{ frequency: 2100, duration: 0.4, volume: 0.28, type: "square" }]);
 }
