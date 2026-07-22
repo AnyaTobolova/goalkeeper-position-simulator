@@ -1217,9 +1217,8 @@ export function App() {
   const badgeToastTimerRef = useRef<number | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   // Подсказка «установи как приложение»: Chrome/Android дает событие установки,
-  // на iOS показываем инструкцию. Закрытие запоминается.
+  // на iOS показываем инструкцию. Живет в сворачиваемом блоке меню «Данные и установка».
   const [installPromptEvent, setInstallPromptEvent] = useState<(Event & { prompt: () => Promise<unknown> }) | null>(null);
-  const [installDismissed, setInstallDismissed] = useState(() => localStorage.getItem("goalkeeper-sim:install-dismissed") === "yes");
   const isIosBrowser =
     typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.matchMedia("(display-mode: standalone)").matches;
 
@@ -1232,11 +1231,6 @@ export function App() {
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
     return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall);
   }, []);
-
-  function dismissInstallBanner() {
-    localStorage.setItem("goalkeeper-sim:install-dismissed", "yes");
-    setInstallDismissed(true);
-  }
   // Специальные сессии: «Слабые места», «Тренировка дня», «Марафон».
   // Список сценариев фиксируется на момент запуска, чтобы не менялся по ходу.
   const [customSession, setCustomSession] = useState<{ kind: "weak" | "day" | "marathon"; ids: string[] } | null>(null);
@@ -1848,19 +1842,19 @@ export function App() {
           >
             {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
           </button>
-          <button type="button" onClick={() => setRulesQuizOpen(true)}>
+          <button type="button" title="Правила вратаря" aria-label="Правила вратаря" onClick={() => setRulesQuizOpen(true)}>
             <ListChecks size={18} />
             <span>Правила</span>
           </button>
-          <button type="button" onClick={openOnboarding}>
+          <button type="button" title="Обучение" aria-label="Обучение" onClick={openOnboarding}>
             <BookOpen size={18} />
             <span>Обучение</span>
           </button>
-          <button type="button" onClick={openSettings}>
+          <button type="button" title="Настройки" aria-label="Настройки" onClick={openSettings}>
             <Settings2 size={18} />
             <span>Настройки</span>
           </button>
-          <button type="button" onClick={openStats}>
+          <button type="button" title="Статистика" aria-label="Статистика" onClick={openStats}>
             <BarChart3 size={18} />
             <span>Статистика</span>
           </button>
@@ -2224,105 +2218,109 @@ export function App() {
                 <X size={20} />
               </button>
             </div>
-            <div className="modal-grid single">
-              <PlayerPanel
-                players={players}
-                activePlayerId={activePlayerId}
-                newPlayerName={newPlayerName}
-                onActivePlayerChange={setActivePlayerId}
-                onNewPlayerNameChange={setNewPlayerName}
-                onAddPlayer={addPlayer}
-                onDeletePlayer={deleteActivePlayer}
-              />
-            </div>
-            {!installDismissed && (installPromptEvent || isIosBrowser) && (
-              <div className="install-banner">
-                <span>
-                  {installPromptEvent
-                    ? "Игру можно установить на главный экран - она откроется как обычное приложение."
-                    : "На iPhone/iPad: нажми «Поделиться», затем «На экран Домой» - игра станет приложением."}
-                </span>
-                <div className="install-banner-actions">
-                  {installPromptEvent && (
-                    <button
-                      type="button"
-                      className="primary"
-                      onClick={() => {
-                        void installPromptEvent.prompt();
-                        dismissInstallBanner();
-                      }}
-                    >
-                      Установить
-                    </button>
-                  )}
-                  <button type="button" className="ghost" onClick={dismissInstallBanner}>
-                    Скрыть
+            <div className="start-body">
+              <div className="modal-grid single">
+                <PlayerPanel
+                  players={players}
+                  activePlayerId={activePlayerId}
+                  newPlayerName={newPlayerName}
+                  onActivePlayerChange={setActivePlayerId}
+                  onNewPlayerNameChange={setNewPlayerName}
+                  onAddPlayer={addPlayer}
+                  onDeletePlayer={deleteActivePlayer}
+                />
+              </div>
+
+              <p className="rank-line">
+                Звание: <strong>{keeperRank(masteredAllCount)}</strong> · закреплено {masteredAllCount} из {levels.length}
+              </p>
+
+              <div className="start-section">
+                <div className="start-section-label">Программа тренировки</div>
+                <div className="start-mode-choice" aria-label="Выбор блока тренировки">
+                  <button className={trainingMode === "base_position" ? "active" : ""} type="button" onClick={() => changeTrainingMode("base_position")}>
+                    <strong>База</strong>
+                    <span>{baseLevelCount} сценариев</span>
+                  </button>
+                  <button className={trainingMode === "reaction_to_ball_owner" ? "active" : ""} type="button" onClick={() => changeTrainingMode("reaction_to_ball_owner")}>
+                    <strong>Реакция</strong>
+                    <span>{reactionLevelCount} сценариев</span>
                   </button>
                 </div>
-              </div>
-            )}
-            <div className="data-transfer" aria-label="Перенос прогресса">
-              <button type="button" className="ghost" onClick={exportProgress}>
-                <Save size={16} />
-                <span>Прогресс в файл</span>
-              </button>
-              <button type="button" className="ghost" onClick={() => importInputRef.current?.click()}>
-                <RotateCw size={16} />
-                <span>Загрузить из файла</span>
-              </button>
-              <input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={importProgress} />
-            </div>
-            <div className="start-mode-choice" aria-label="Выбор блока тренировки">
-              <button className={trainingMode === "base_position" ? "active" : ""} type="button" onClick={() => changeTrainingMode("base_position")}>
-                <strong>База</strong>
-                <span>{baseLevelCount} начальных сценариев</span>
-              </button>
-              <button className={trainingMode === "reaction_to_ball_owner" ? "active" : ""} type="button" onClick={() => changeTrainingMode("reaction_to_ball_owner")}>
-                <strong>Реакция</strong>
-                <span>{reactionLevelCount} сценариев от 1 до 3 игроков</span>
-              </button>
-            </div>
-            <div className="modal-actions start-actions">
-              <div className="session-choice">
-                <span>
-                  Звание: <strong>{keeperRank(masteredAllCount)}</strong> ({masteredAllCount} из {levels.length} закреплено).{" "}
+                <p className="session-hint">
                   {hasTrainingToContinue
                     ? `Можно продолжить блок «${trainingModeTitle(trainingMode)}» с задания ${savedLevelIndex + 1} из ${trainingLevels.length}.`
                     : `В блоке «${trainingModeTitle(trainingMode)}» пока нет начатой тренировки.`}
-                </span>
+                </p>
+                <div className="start-primary-row">
+                  <button className="primary" type="button" onClick={() => startTraining("continue")}>
+                    <Play size={18} />
+                    <span>Продолжить</span>
+                  </button>
+                  <button type="button" onClick={() => startTraining("restart")}>
+                    <RotateCcw size={18} />
+                    <span>Начать заново</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="start-section">
+                <div className="start-section-label">Режимы и мини-игры</div>
+                <div className="mode-grid">
+                  <button type="button" className="day-training-button" onClick={startDayTraining}>
+                    <Play size={18} />
+                    <span>Тренировка дня{dayStreak && dayStreak.streak > 0 ? ` · ${dayStreak.streak} дн.` : ""}</span>
+                  </button>
+                  <button type="button" onClick={startMarathon}>
+                    <Activity size={18} />
+                    <span>Марафон{marathonBest !== null ? ` · ${marathonBest}` : ""}</span>
+                  </button>
+                  <button type="button" onClick={startWeakSpots} disabled={weakSpotsCount === 0} title={weakSpotsCount === 0 ? "Пока нет сценариев на повтор" : undefined}>
+                    <Target size={18} />
+                    <span>Слабые места{weakSpotsCount > 0 ? ` (${weakSpotsCount})` : ""}</span>
+                  </button>
+                  <button type="button" onClick={() => setShootoutOpen(true)}>
+                    <Award size={18} />
+                    <span>Серия пенальти{penaltyBest !== null ? ` · ${penaltyBest}/5` : ""}</span>
+                  </button>
+                </div>
                 {players.length > 1 && (
-                  <span className="records-line">
+                  <p className="records-line">
                     Рекорды марафона: {players.map((player) => `${player.name} - ${loadMarathonBest(player.id) ?? "нет"}`).join(" · ")}
-                  </span>
+                  </p>
                 )}
               </div>
-              <button type="button" onClick={() => startTraining("restart")}>
-                <RotateCcw size={18} />
-                <span>Начать заново</span>
-              </button>
-              <button className="primary" type="button" onClick={() => startTraining("continue")}>
-                <Play size={18} />
-                <span>Продолжить</span>
-              </button>
-              <button type="button" className="day-training-button" onClick={startDayTraining}>
-                <Play size={18} />
-                <span>
-                  Тренировка дня
-                  {dayStreak && dayStreak.streak > 0 ? ` · ${dayStreak.streak} дн. подряд` : ""}
-                </span>
-              </button>
-              <button type="button" onClick={startMarathon}>
-                <Activity size={18} />
-                <span>Марафон{marathonBest !== null ? ` (рекорд ${marathonBest})` : ""}</span>
-              </button>
-              <button type="button" onClick={startWeakSpots} disabled={weakSpotsCount === 0} title={weakSpotsCount === 0 ? "Пока нет сценариев на повтор" : undefined}>
-                <Target size={18} />
-                <span>Слабые места{weakSpotsCount > 0 ? ` (${weakSpotsCount})` : ""}</span>
-              </button>
-              <button type="button" onClick={() => setShootoutOpen(true)}>
-                <Award size={18} />
-                <span>Серия пенальти{penaltyBest !== null ? ` (лучшая ${penaltyBest}/5)` : ""}</span>
-              </button>
+
+              <details className="start-extra">
+                <summary>Данные и установка</summary>
+                <div className="data-transfer" aria-label="Перенос прогресса">
+                  <button type="button" className="ghost" onClick={exportProgress}>
+                    <Save size={16} />
+                    <span>Прогресс в файл</span>
+                  </button>
+                  <button type="button" className="ghost" onClick={() => importInputRef.current?.click()}>
+                    <RotateCw size={16} />
+                    <span>Загрузить из файла</span>
+                  </button>
+                  <input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={importProgress} />
+                </div>
+                {(installPromptEvent || isIosBrowser) && (
+                  <div className="install-banner">
+                    <span>
+                      {installPromptEvent
+                        ? "Игру можно установить на главный экран - она откроется как обычное приложение."
+                        : "На iPhone/iPad: нажми «Поделиться», затем «На экран Домой» - игра станет приложением."}
+                    </span>
+                    {installPromptEvent && (
+                      <div className="install-banner-actions">
+                        <button type="button" className="primary" onClick={() => void installPromptEvent.prompt()}>
+                          Установить
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </details>
             </div>
           </section>
         </div>

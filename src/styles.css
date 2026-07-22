@@ -2065,46 +2065,53 @@ input:focus {
     padding: max(10px, env(safe-area-inset-top)) 10px calc(88px + env(safe-area-inset-bottom));
   }
 
+  /* Компактная шапка в игре: поле и разбор важнее, шапку сжимаем. */
   .topbar {
     display: grid;
     grid-template-columns: 1fr;
-    align-items: flex-start;
-    gap: 10px;
-    margin-bottom: 10px;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
   }
 
   .topbar h1 {
-    font-size: 30px;
-    line-height: 0.98;
+    font-size: 22px;
+    line-height: 1;
   }
 
   .topbar .eyebrow {
-    font-size: 11px;
+    display: none;
   }
 
+  /* Карточки прогресса в игре не нужны - они есть в «Статистике». */
   .top-stats {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: 100%;
-    gap: 8px;
-  }
-
-  .top-stats > div {
-    min-width: 0;
-    padding: 8px 10px;
+    display: none;
   }
 
   .top-actions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    align-items: center;
+    gap: 6px;
     width: 100%;
-    gap: 8px;
   }
 
   .top-actions button {
+    flex: 1 1 0;
     min-width: 0;
-    padding: 10px 8px;
+    min-height: 42px;
+    padding: 8px 4px;
     font-size: 13px;
+  }
+
+  /* Иконки-кнопки: подпись скрыта, доступность через aria-label/title. */
+  .top-actions button:not(.player-chip) span {
+    display: none;
+  }
+
+  .top-actions .player-chip {
+    flex: 2 1 auto;
+    justify-content: center;
+    padding: 8px 10px;
   }
 
   .level-strip {
@@ -2161,7 +2168,7 @@ input:focus {
   }
 
   .field {
-    height: clamp(330px, 56svh, 460px);
+    height: clamp(360px, 64svh, 560px);
     min-height: 0;
   }
 
@@ -3050,4 +3057,158 @@ input:focus {
 .player-chip span {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ===== Переделанное главное меню ===== */
+.start-modal {
+  max-width: 560px;
+}
+
+.start-body {
+  display: grid;
+  gap: 14px;
+}
+
+.rank-line {
+  margin: 0;
+  color: #b7cdbd;
+  font-size: 14px;
+}
+
+.rank-line strong {
+  color: #9be47a;
+}
+
+.start-section {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(219, 244, 222, 0.1);
+  border-radius: 14px;
+  background: rgba(8, 26, 16, 0.5);
+}
+
+.start-section-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #97d7aa;
+}
+
+.session-hint {
+  margin: 0;
+  color: #a8bbae;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.start-primary-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 8px;
+}
+
+.mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.mode-grid button {
+  min-height: 54px;
+  padding: 8px 12px;
+  font-size: 14px;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.mode-grid button span {
+  white-space: normal;
+}
+
+.records-line {
+  margin: 2px 0 0;
+  color: #9fb8a6;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.start-extra {
+  border: 1px solid rgba(219, 244, 222, 0.1);
+  border-radius: 12px;
+  background: rgba(8, 26, 16, 0.4);
+  padding: 4px 12px;
+}
+
+.start-extra summary {
+  cursor: pointer;
+  color: #b7cdbd;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 0;
+  list-style: none;
+}
+
+.start-extra summary::-webkit-details-marker {
+  display: none;
+}
+
+.start-extra summary::before {
+  content: "▸ ";
+  color: #97d7aa;
+}
+
+.start-extra[open] summary::before {
+  content: "▾ ";
+}
+
+.start-extra .data-transfer {
+  margin: 4px 0 10px;
+}
+
+/* ===== Компактная стартовая модалка, чтобы всё влезало ===== */
+.start-modal .start-body {
+  gap: 10px;
+}
+
+.start-modal .panel {
+  gap: 8px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.start-modal .player-panel .panel-title {
+  margin-bottom: 2px;
+}
+
+.start-modal .start-section {
+  padding: 10px 12px;
+  gap: 8px;
+}
+
+.start-modal .rank-line {
+  margin: -2px 0 0;
+}
+
+/* Добавление и удаление игрока в один компактный ряд */
+.start-modal .add-player-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.start-modal .player-panel .danger-button {
+  min-height: 40px;
+  font-size: 13px;
+}
+
+.start-modal label {
+  gap: 4px;
+}
+
+.start-modal .start-primary-row button,
+.start-modal .mode-grid button {
+  min-height: 48px;
 }
