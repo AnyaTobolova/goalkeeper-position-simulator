@@ -145,6 +145,7 @@ export function StatsPanel({ levels, players, activePlayerId, selectedPlayerId, 
           <span>{skills.practice.length ? skills.practice.map((item) => item.title).join(", ") : "Здесь появятся темы, которым стоит уделить больше времени."}</span>
         </div>
         <p>Учитываем все записанные попытки: не менее трёх в теме и двух разных ситуаций. Ситуация закреплена после двух «Отлично» подряд.</p>
+        {skills.penaltyAttempts > 0 && <p>Пенальти: попыток — {skills.penaltyAttempts}. Пока в игре одна ситуация, поэтому судить по ней обо всей теме рано.</p>}
       </div>
 
       <details className="stats-details">

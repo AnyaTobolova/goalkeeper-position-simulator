@@ -58,7 +58,7 @@ const visibilityCriterionTexts: Record<CriterionStatus, string> = {
   good: "мяч видно",
   almost: "обзор неидеальный",
   bad: "мяч плохо видно",
-  dangerous: "ты не видишь мяч"
+  dangerous: "стенка может закрывать мяч"
 };
 
 const wallCriterionTexts: Record<CriterionStatus, string> = {
@@ -78,9 +78,9 @@ const excellentSummaryByScenarioType: Record<ScenarioType, string> = {
   one_v_one_loose_touch: "Ты смело вышел к мячу и сохранил контроль.",
   pass_or_cutback: "Ты перестроился за мячом и занял новую линию удара.",
   cross_goal: "Ты двигаешься за мячом и контролируешь ворота.",
-  high_cross: "Ты видишь мяч, контролируешь траекторию и не бросаешь ворота.",
-  corner: "Ты выбрал стартовую позицию, из которой видишь мяч и ворота.",
-  free_kick: "Ты видишь мяч и занял открытую часть ворот за стенкой.",
+  high_cross: "Ты выбрал стартовую позицию для этой подачи.",
+  corner: "Ты выбрал стартовую позицию у ворот и готов к подаче.",
+  free_kick: "Ты занял открытую часть ворот за стенкой.",
   penalty: "Ты на линии ворот по центру, как требуют правила, и готов оттолкнуться в любую сторону.",
   defender_pressure: "Ты учёл защитника и сохранил правильную позицию.",
   sweeper_position: "Ты стоишь выше и готов помочь команде, не теряя ворота.",
@@ -99,7 +99,7 @@ const summaryByErrorType: Record<FeedbackErrorType, string> = {
   STUCK_NEAR_POST: "Мяч уже в другой точке. Позицию нужно поменять.",
   RUSHED_1V1: "Ты слишком резко выбежал. Нужно остановиться перед ударом.",
   PASSIVE_1V1: "Ты остался слишком близко к линии ворот. В 1-в-1 нужно выйти навстречу.",
-  NO_BALL_VISIBILITY: "Ты не видишь мяч из-за игроков или стенки. Так сложно среагировать.",
+  NO_BALL_VISIBILITY: "Стенка может закрывать тебе мяч. Так сложнее среагировать.",
   WALL_COUNT_WRONG: "Для этого штрафного нужно другое число игроков в стенке.",
   WALL_POSITION_WRONG: "Стенка стоит не на той линии и не закрывает нужную часть ворот.",
   TOO_LATE_REACTION: "Время вышло. Вратарь должен успеть занять позицию и остановиться до удара.",
@@ -266,7 +266,7 @@ function readinessCriterion(error: FeedbackErrorType, result: CheckResult): Crit
   }
 
   if (error === "NO_BALL_VISIBILITY") {
-    return { key: "readiness", label: "Готовность", status: "dangerous", text: "ты не видишь удар" };
+    return { key: "readiness", label: "Готовность", status: "dangerous", text: "стенка может мешать обзору" };
   }
 
   if (error === "TOO_LATE_REACTION") {
@@ -429,7 +429,8 @@ function criterionForKey(key: CriterionKey, result: CheckResult, level: Level): 
 
 function buildCriteria(result: CheckResult, level: Level) {
   const scenarioType = result.evaluation.scenarioType;
-  const keys = result.result === "correct" ? criteriaByScenarioType[scenarioType].slice(0, 4) : criteriaByScenarioType[scenarioType];
+  const applicable = criteriaByScenarioType[scenarioType].filter((key) => key !== "trajectory" && (key !== "visibility" || (Boolean(level.freeKick) && resultError(result, level) === "NO_BALL_VISIBILITY")));
+  const keys = result.result === "correct" ? applicable.slice(0, 4) : applicable;
   return keys.map((key) => criterionForKey(key, result, level));
 }
 
@@ -437,9 +438,9 @@ function buildVisualHints(result: CheckResult, level: Level, criteria: Criterion
   const error = resultError(result, level);
   // На угловых и высоких навесах прямого удара еще нет: мяч приходит с фланга.
   // Линия «мяч - центр ворот» и сектор угла удара здесь только запутывают,
-  // поэтому показываем зоны у ворот, траекторию подачи и обзор мяча.
+  // поэтому показываем только зоны у ворот и известные положения мяча.
   const isAerialSetPiece = result.evaluation.scenarioType === "corner" || result.evaluation.scenarioType === "high_cross";
-  const hints = new Set<VisualHint>(isAerialSetPiece ? ["CURRENT_BALL_POINT", "CORRECT_ZONE", "ALMOST_ZONE", "CROSS_TRAJECTORY"] : ["BALL_TO_GOAL_LINE", "CURRENT_BALL_POINT", "CORRECT_ZONE", "ALMOST_ZONE"]);
+  const hints = new Set<VisualHint>(isAerialSetPiece ? ["CURRENT_BALL_POINT", "CORRECT_ZONE", "ALMOST_ZONE"] : ["BALL_TO_GOAL_LINE", "CURRENT_BALL_POINT", "CORRECT_ZONE", "ALMOST_ZONE"]);
 
   if (result.result !== "correct" && error !== "WRONG_EXIT_DECISION") {
     hints.add("MOVE_ARROW");
@@ -453,14 +454,6 @@ function buildVisualHints(result: CheckResult, level: Level, criteria: Criterion
   if (level.freeKick) {
     hints.add("WALL_COVERAGE");
     hints.add("BALL_VISIBILITY_LINE");
-  }
-
-  if (criteria.some((criterion) => criterion.key === "visibility")) {
-    hints.add("BALL_VISIBILITY_LINE");
-  }
-
-  if (criteria.some((criterion) => criterion.key === "trajectory")) {
-    hints.add("CROSS_TRAJECTORY");
   }
 
   if (criteria.some((criterion) => criterion.key === "defenderHelp")) {
@@ -494,7 +487,7 @@ function explainWhy(result: CheckResult, level: Level) {
   }
 
   if (level.previousBall) {
-    return "Голубой пунктир показывает, откуда пришёл мяч. После паса позиция вратаря меняется вместе с новой точкой мяча.";
+    return "Голубой пунктир соединяет отмеченные положения мяча. Следи за мячом и своей позицией.";
   }
 
   if (result.evaluation.scenarioType === "reaction_to_ball_owner") {
@@ -502,7 +495,7 @@ function explainWhy(result: CheckResult, level: Level) {
   }
 
   if (level.freeKick || error === "NO_BALL_VISIBILITY") {
-    return "Голубая линия показывает, видишь ли ты мяч. Стенка помогает, но вратарь не должен прятаться за ней.";
+    return "Голубая линия соединяет вратаря и мяч. Проверь, не закрывает ли стенка обзор.";
   }
 
   if (error === "TOO_HIGH" || error === "TOO_DEEP" || error === "PASSIVE_1V1" || error === "RUSHED_1V1") {

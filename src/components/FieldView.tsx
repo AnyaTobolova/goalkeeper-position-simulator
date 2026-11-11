@@ -652,9 +652,6 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
             {hasHint("BALL_VISIBILITY_LINE") && (
               <line className={result.errorType === "NO_BALL_VISIBILITY" || result.evaluation.mainErrorType === "NO_BALL_VISIBILITY" ? "visibility-line blocked" : "visibility-line"} x1={keeperSvg.x} y1={keeperSvg.y} x2={ball.x} y2={ball.y} />
             )}
-            {hasHint("CROSS_TRAJECTORY") && (
-              <path className="trajectory cross" d={`M ${ball.x} ${ball.y} Q ${(ball.x + centerSvg.x) / 2} ${Math.min(ball.y, centerSvg.y) - 12} ${centerSvg.x} ${centerSvg.y}`} />
-            )}
             {hasHint("BALL_MOVEMENT_PATH") && level.previousBall && (
               <line
                 className="trajectory pass"

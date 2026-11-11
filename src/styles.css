@@ -3513,6 +3513,14 @@ input:focus {
 .contextual-hint > span { flex: 1; }
 .contextual-hint-close { flex: 0 0 44px; width: 44px; min-height: 44px; padding: 0; background: transparent; }
 
+.result-legend-disclosure { grid-area: legend; min-width: 0; }
+.result-legend-disclosure > summary { cursor: pointer; color: #dceee0; font-size: 13px; padding: 10px; }
+.result-legend-disclosure .result-legend { margin-top: 2px; }
+
+@media (max-width: 820px) and (orientation: portrait) {
+  .field { height: clamp(300px, calc(100svh - 420px), 500px); min-height: 0; }
+}
+
 .correction-actions {
   display: flex;
   flex-wrap: wrap;

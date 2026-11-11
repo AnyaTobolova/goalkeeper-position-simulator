@@ -222,9 +222,8 @@ function fieldLegendItems(visualHints: VisualHint[]) {
     (hasHint("TOO_HIGH_ZONE") || hasHint("TOO_DEEP_ZONE")) && { kind: "red", label: "красная зона", text: "опасная глубина" },
     hasHint("BALL_TO_GOAL_LINE") && { kind: "white-line", label: "белая линия", text: "линия удара" },
     hasHint("MOVE_ARROW") && { kind: "arrow", label: "стрелка", text: "куда поправить" },
-    hasHint("CROSS_TRAJECTORY") && { kind: "blue-line", label: "голубая дуга", text: "полет подачи" },
-    hasHint("BALL_MOVEMENT_PATH") && { kind: "blue-line", label: "голубой пунктир", text: "движение мяча" },
-    hasHint("BALL_VISIBILITY_LINE") && { kind: "blue-line", label: "голубая линия", text: "обзор мяча" }
+    hasHint("BALL_MOVEMENT_PATH") && { kind: "blue-line", label: "голубой пунктир", text: "положения мяча" },
+    hasHint("BALL_VISIBILITY_LINE") && { kind: "blue-line", label: "голубая линия", text: "линия к мячу" }
   ].filter(Boolean) as { kind: string; label: string; text: string }[];
 }
 
@@ -1618,7 +1617,9 @@ export function App() {
             <div className={`result-summary ${visibleFieldLegend.length > 0 ? "with-legend" : ""}`}>
               <div className={`result-pill ${analysisRevealed ? resultClass(result) : ""}`}>{result && !analysisRevealed ? "Удар..." : resultLabel(result)}</div>
               {visibleFieldLegend.length > 0 && (
-                <div className="result-legend" aria-label="Обозначения на поле">
+                <details className="result-legend-disclosure">
+                  <summary>Обозначения на поле</summary>
+                <div className="result-legend">
                   {visibleFieldLegend.map((item) => (
                     <div className="result-legend-row" key={`${item.kind}-${item.label}`}>
                       <span className={`legend-mark ${item.kind}`} aria-hidden="true" />
@@ -1628,6 +1629,7 @@ export function App() {
                     </div>
                   ))}
                 </div>
+                </details>
               )}
             </div>
           </div>
@@ -1733,7 +1735,7 @@ export function App() {
             )}
             {shownFeedback && result && level.freeKick && (
               <div className="open-goal-row" aria-label="Открытая часть ворот при штрафном">
-                <span>Оранжевым показана примерно открытая часть ворот с учётом вратаря и стенки.</span>
+                <span>Оранжевым показана примерная открытая часть ворот по земле. Высота удара не учитывается, фигуры увеличены для наглядности.</span>
                 <span>Это схема по земле: высота удара не учитывается.</span>
               </div>
             )}

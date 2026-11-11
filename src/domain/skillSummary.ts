@@ -31,6 +31,7 @@ export function summarizeSkills(levels: Level[], progress: Progress) {
     .map(([category, group]) => ({ category, title: titles[category], ...group, rate: group.excellent / group.attempts }));
   return {
     strong: qualified.filter((item) => item.rate >= 0.7).sort((a, b) => b.rate - a.rate),
-    practice: qualified.filter((item) => item.rate < 0.7).sort((a, b) => a.rate - b.rate)
+    practice: qualified.filter((item) => item.rate < 0.7).sort((a, b) => a.rate - b.rate),
+    penaltyAttempts: groups.get("penalty")?.attempts ?? 0
   };
 }

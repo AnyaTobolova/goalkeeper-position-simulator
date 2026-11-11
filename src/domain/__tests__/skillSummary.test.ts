@@ -29,6 +29,14 @@ describe("Поддерживающая статистика", () => {
     expect(summarizeSkills(angle, { [angle[0].id]: record(2, 0, 2), [angle[1].id]: incomplete }).strong).toHaveLength(0);
   });
 
+  it("показывает попытки пенальти, не делая вывод по единственной ситуации", () => {
+    const penalty = levels.find((level) => level.category === "penalty")!;
+    const summary = summarizeSkills([penalty], { [penalty.id]: record(4, 0, 4) });
+    expect(summary.penaltyAttempts).toBe(4);
+    expect(summary.strong).toHaveLength(0);
+    expect(summary.practice).toHaveLength(0);
+  });
+
   it("различает сильные темы и темы для тренировки по накопленным попыткам", () => {
     const angle = levels.filter((level) => level.category === "shot_angle").slice(0, 2);
     const depth = levels.filter((level) => level.category === "depth").slice(0, 2);
