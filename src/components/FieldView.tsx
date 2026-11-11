@@ -39,17 +39,18 @@ function formatMeters(value: number) {
   return `${Math.round(value * 10) / 10} м`;
 }
 
-function ZoneCapsule({ zone, className, fieldHeight, exactDepth = false }: { zone: OrientedZone; className: string; fieldHeight: number; exactDepth?: boolean }) {
+function ZoneShape({ zone, className, fieldHeight }: { zone: OrientedZone; className: string; fieldHeight: number }) {
   const center = {
     x: zone.center.x,
     y: yToSvg(zone.center.y) * (fieldHeight / 100)
   };
-  const depthHalf = exactDepth ? zone.depthHalf * (fieldHeight / 100) : Math.max(1.2, zone.depthHalf * (fieldHeight / 100));
-  const sideHalf = exactDepth ? zone.sideHalf : Math.max(0.9, zone.sideHalf);
+  const depthHalf = zone.depthHalf * (fieldHeight / 100);
+  const sideHalf = zone.sideHalf;
+  if (depthHalf <= 0 || sideHalf <= 0) return null;
 
   return (
     <g transform={`translate(${center.x} ${center.y}) rotate(${zone.angle})`}>
-      <rect className={className} x={-sideHalf} y={-depthHalf} width={sideHalf * 2} height={depthHalf * 2} rx={exactDepth ? 0 : sideHalf} ry={exactDepth ? 0 : sideHalf} />
+      <rect className={className} x={-sideHalf} y={-depthHalf} width={sideHalf * 2} height={depthHalf * 2} />
     </g>
   );
 }
@@ -637,10 +638,10 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
                 На угловых и навесах он вырождается в тонкий серп у флажка
                 и «смазывает» зоны, поэтому там зоны рисуются без обрезки. */}
             <g clipPath={showShotAngle ? `url(#${shotAngleClipId})` : undefined}>
-              {hasHint("TOO_DEEP_ZONE") && tooDeepZone && <ZoneCapsule zone={tooDeepZone} className={`danger-zone ${dangerZone === tooDeepZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
-              {hasHint("TOO_HIGH_ZONE") && tooHighZone && <ZoneCapsule zone={tooHighZone} className={`danger-zone ${dangerZone === tooHighZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
-              {hasHint("ALMOST_ZONE") && almostZone && <ZoneCapsule zone={almostZone} className="almost-zone" fieldHeight={fieldHeight} exactDepth={level.category === "penalty"} />}
-              {hasHint("CORRECT_ZONE") && optimalSvg && correctZone && <ZoneCapsule zone={correctZone} className="correct-zone" fieldHeight={fieldHeight} exactDepth={level.category === "penalty"} />}
+              {hasHint("TOO_DEEP_ZONE") && tooDeepZone && <ZoneShape zone={tooDeepZone} className={`danger-zone ${dangerZone === tooDeepZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
+              {hasHint("TOO_HIGH_ZONE") && tooHighZone && <ZoneShape zone={tooHighZone} className={`danger-zone ${dangerZone === tooHighZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
+              {hasHint("ALMOST_ZONE") && almostZone && <ZoneShape zone={almostZone} className="almost-zone" fieldHeight={fieldHeight} />}
+              {hasHint("CORRECT_ZONE") && optimalSvg && correctZone && <ZoneShape zone={correctZone} className="correct-zone" fieldHeight={fieldHeight} />}
             </g>
             {hasHint("MOVE_ARROW") && optimalSvg && (
               <>

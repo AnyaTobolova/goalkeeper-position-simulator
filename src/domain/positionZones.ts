@@ -368,7 +368,9 @@ export function localZoneToPercent(center: Point, axes: LocalAxes, pitch: PitchC
   const centerMeters = fromLocal({ u: (uMin + uMax) / 2, v: 0 }, center, axes);
   const centerPercent = fromMeters(centerMeters, pitch);
   const depthHalfMeters = (uMax - uMin) / 2;
-  const angle = (Math.atan2(axes.ux * pitch.fieldLength, axes.uy * pitch.fieldWidth) * 180) / Math.PI;
+  const scaleX = 100 / pitch.fieldWidth;
+  const scaleY = Math.max(64, 100 * pitch.fieldLength / pitch.fieldWidth) / pitch.fieldLength;
+  const angle = (Math.atan2(axes.ux * scaleX, axes.uy * scaleY) * 180) / Math.PI;
 
   return {
     center: centerPercent,

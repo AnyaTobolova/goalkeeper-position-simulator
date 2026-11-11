@@ -160,6 +160,8 @@ export function angleDifference(a: number, b: number) {
   return Math.min(diff, 360 - diff);
 }
 
-export function facingAngleToBall(goalkeeper: Point, ball: Point) {
-  return normalizeAngle((Math.atan2(ball.x - goalkeeper.x, ball.y - goalkeeper.y) * 180) / Math.PI);
+export function facingAngleToBall(goalkeeper: Point, ball: Point, pitch: PitchConfig) {
+  const dx = (ball.x - goalkeeper.x) * pitch.fieldWidth;
+  const dy = (ball.y - goalkeeper.y) * pitch.fieldLength;
+  return normalizeAngle((Math.atan2(dx, dy) * 180) / Math.PI);
 }

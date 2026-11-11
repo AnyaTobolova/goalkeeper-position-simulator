@@ -102,7 +102,7 @@ export function evaluateGoalkeeper(
   goalkeeperPercent: Point,
   level: Level,
   pitch: PitchConfig,
-  goalkeeperFacing = facingAngleToBall(goalkeeperPercent, level.ball),
+  goalkeeperFacing = facingAngleToBall(goalkeeperPercent, level.ball, pitch),
   wall?: WallConfig
 ): EvaluationScore {
   const ball = toMeters(level.ball, pitch);
@@ -136,7 +136,7 @@ export function evaluateGoalkeeper(
   // Для стандартов ближний угол закрывается стенкой или задан целевой зоной,
   // поэтому отдельная оценка ближней штанги не применяется.
   let nearPostScore = side === 0 || setPiece ? 100 : scoreByDistance(nearPostDistance, pitch.goalWidth * 0.38, pitch.goalWidth * 1.15);
-  const targetFacing = facingAngleToBall(goalkeeperPercent, level.ball);
+  const targetFacing = facingAngleToBall(goalkeeperPercent, level.ball, pitch);
   const orientationScore = scoreByDistance(angleDifference(goalkeeperFacing, targetFacing), 14, 78);
   let defenderScore = 100;
   let passScore = 100;

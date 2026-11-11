@@ -52,7 +52,7 @@ import {
 const onboardingCards = [
   { title: "Найди мяч", visual: "ball", text: "Главное в задании — мяч. Сначала посмотри, откуда будут бить: от этого зависит, где встать." },
   { title: "Поставь вратаря", visual: "position", text: "Перетащи вратаря за белую точку под ногами. Именно она решает, попал ли он в нужную зону." },
-  { title: "Поверни корпус к мячу", visual: "body", text: "Жёлтый указатель на вратаре — это поворот корпуса. Разверни вратаря грудью к мячу — так он готов к удару." }
+  { title: "Поверни корпус к мячу", visual: "body", text: "Жёлтый указатель показывает поворот корпуса. Поверни указатель к мячу — так вратарь готов к удару." }
 ];
 
 const contextualHintTexts = {
@@ -373,8 +373,8 @@ function startGoalkeeperForLevel(level: Level, index: number): Point {
   };
 }
 
-function startFacingForLevel(level: Level, goalkeeper: Point, index: number) {
-  const targetFacing = facingAngleToBall(goalkeeper, level.ball);
+function startFacingForLevel(level: Level, goalkeeper: Point, index: number, pitch: PitchConfig) {
+  const targetFacing = facingAngleToBall(goalkeeper, level.ball, pitch);
   const wrongTurn = index % 2 === 0 ? -105 : 105;
 
   return normalizeAngle(targetFacing + wrongTurn);
@@ -922,7 +922,7 @@ export function App() {
   const [mirroredLevelId, setMirroredLevelId] = useState<string | null>(null);
   const [similarMessage, setSimilarMessage] = useState<string | null>(null);
   const [goalkeeper, setGoalkeeper] = useState<Point>(() => startGoalkeeperForLevel(levels[0], 0));
-  const [goalkeeperFacing, setGoalkeeperFacing] = useState(() => startFacingForLevel(levels[0], startGoalkeeperForLevel(levels[0], 0), 0));
+  const [goalkeeperFacing, setGoalkeeperFacing] = useState(() => startFacingForLevel(levels[0], startGoalkeeperForLevel(levels[0], 0), 0, pitch));
   const [wall, setWall] = useState<WallConfig>(() => startWallForLevel(levels[0]));
   const [result, setResult] = useState<CheckResult | null>(null);
   const [hintVisible, setHintVisible] = useState(false);
@@ -1221,7 +1221,7 @@ export function App() {
     setMirroredLevelId(null);
     setSimilarMessage(null);
     setGoalkeeper(nextGoalkeeper);
-    setGoalkeeperFacing(startFacingForLevel(nextLevel, nextGoalkeeper, safeIndex));
+    setGoalkeeperFacing(startFacingForLevel(nextLevel, nextGoalkeeper, safeIndex, nextLevel.pitchPresetOverride ? pitchPresets[nextLevel.pitchPresetOverride] : pitch));
     setWall(startWallForLevel(nextLevel));
     setResult(null);
     setHintVisible(false);
@@ -1422,7 +1422,7 @@ export function App() {
   function resetLevel(startLevel: Level = preparedLevel) {
     const startGoalkeeper = startGoalkeeperForLevel(startLevel, levelIndex);
     setGoalkeeper(startGoalkeeper);
-    setGoalkeeperFacing(startFacingForLevel(startLevel, startGoalkeeper, levelIndex));
+    setGoalkeeperFacing(startFacingForLevel(startLevel, startGoalkeeper, levelIndex, activePitch));
     setWall(startWallForLevel(startLevel));
     setResult(null);
     setHintVisible(false);
