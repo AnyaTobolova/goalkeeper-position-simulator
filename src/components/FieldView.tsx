@@ -537,7 +537,7 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
           </clipPath>
           <mask id={wallDistanceMaskId} maskUnits="userSpaceOnUse" x="0" y="0" width={viewBoxWidth} height={fieldHeight}>
             <rect x="0" y="0" width={viewBoxWidth} height={fieldHeight} fill="white" />
-            <ellipse cx={ball.x} cy={ball.y} rx={(pitch.markings.penaltyArcRadius ?? 9.15) * scaleX} ry={(pitch.markings.penaltyArcRadius ?? 9.15) * scaleY} fill="black" />
+            <ellipse cx={ball.x} cy={ball.y} rx={(pitch.freeKickDistance ?? pitch.markings.penaltyArcRadius ?? 9.15) * scaleX} ry={(pitch.freeKickDistance ?? pitch.markings.penaltyArcRadius ?? 9.15) * scaleY} fill="black" />
           </mask>
         </defs>
 

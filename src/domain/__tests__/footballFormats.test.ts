@@ -23,6 +23,8 @@ describe("Форматы футбола на поле", () => {
     expect(normalizeStoredPitch(old11).goalWidth).toBe(7);
     const manual = { ...old9, goalPresetId: "custom" as const, goalWidth: 6.5, goalHeight: 2.1 };
     expect(normalizeStoredPitch(manual)).toMatchObject({ goalPresetId: "custom", goalWidth: 6.5, goalHeight: 2.1 });
+    const customWall = { ...pitchPresets["7v7"], freeKickDistance: 6.5 };
+    expect(normalizeStoredPitch(customWall).freeKickDistance).toBe(6.5);
   });
 
   it("переводит старый футзал в формат 5 на 5 и сохраняет ручные размеры ворот", () => {

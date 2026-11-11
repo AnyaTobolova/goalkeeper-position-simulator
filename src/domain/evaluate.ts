@@ -72,7 +72,7 @@ export function freeKickWallZone(ballMeters: Point, pitch: PitchConfig): Zone {
   const nearPostPoint = ballMeters.x >= center.x ? rightPost(pitch) : leftPost(pitch);
   const toPost = { x: nearPostPoint.x - ballMeters.x, y: nearPostPoint.y - ballMeters.y };
   const len = Math.max(0.1, Math.hypot(toPost.x, toPost.y));
-  const legalDistance = pitch.markings.penaltyArcRadius ?? 9.15;
+  const legalDistance = pitch.freeKickDistance ?? pitch.markings.penaltyArcRadius ?? 9.15;
   const wallDistance = legalDistance;
   const wallCenter = {
     x: ballMeters.x + (toPost.x / len) * wallDistance,
@@ -263,7 +263,7 @@ export function evaluateGoalkeeper(
     const wallInZone = isInsideZone(selectedWall, targetWallZone);
     const wallBetweenBallAndKeeper = selectedWallPoint.y > goalkeeper.y && selectedWallPoint.y < ball.y;
     const hiddenBehindWall = selectedWall.count > 0 && wallBetweenBallAndKeeper && distancePointToLine(goalkeeper, selectedWallPoint, ball) < Math.max(0.55, pitch.goalWidth * 0.14);
-    const legalDistance = pitch.markings.penaltyArcRadius ?? 9.15;
+    const legalDistance = pitch.freeKickDistance ?? pitch.markings.penaltyArcRadius ?? 9.15;
     const wallTooClose = selectedWall.count > 0 && distance(selectedWallPoint, ball) < legalDistance - 0.01;
 
     wallCountScore = countDiff === 0 ? 100 : countDiff === 1 ? 62 : countDiff === 2 ? 28 : 0;

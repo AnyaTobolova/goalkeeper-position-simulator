@@ -1,6 +1,7 @@
 import { Ruler, Settings2 } from "lucide-react";
 import type { GoalPresetId, PitchConfig, PitchPresetId, ReactionTimeSeconds } from "../domain/types";
 import { goalPresets, pitchPresets } from "../domain/presets";
+import { pitchSettingsError, resizePitch } from "../domain/pitchSettings";
 
 type SettingsPanelProps = {
   pitch: PitchConfig;
@@ -33,6 +34,11 @@ export function SettingsPanel({ pitch, showDimensions, reactionTimeSeconds, onPi
       return;
     }
 
+    if (key === "fieldLength" || key === "fieldWidth") {
+      onPitchChange(resizePitch(pitch, key, parsed));
+      return;
+    }
+
     onPitchChange({
       ...pitch,
       presetId: key.startsWith("goal") ? pitch.presetId : "custom",
@@ -47,6 +53,9 @@ export function SettingsPanel({ pitch, showDimensions, reactionTimeSeconds, onPi
         <Settings2 size={18} />
         <span>Формат</span>
       </div>
+
+      {pitch.presetId === "custom" && <p className="pitch-settings-note">Разметка изменяется пропорционально полю и остаётся приблизительной.</p>}
+      {pitchSettingsError(pitch) && <p className="pitch-settings-error" role="alert">{pitchSettingsError(pitch)}</p>}
 
       <label>
         Формат игры
@@ -87,6 +96,21 @@ export function SettingsPanel({ pitch, showDimensions, reactionTimeSeconds, onPi
           <input value={pitch.goalHeight} type="number" min="1.5" step="0.1" onChange={(event) => updateNumber("goalHeight", event.target.value)} />
         </label>
       </div>
+
+      <label>
+        Дистанция стенки, м
+        <input
+          value={pitch.freeKickDistance ?? pitch.markings.penaltyArcRadius ?? 9.15}
+          type="number"
+          min="1"
+          step="0.1"
+          onChange={(event) => {
+            const distance = Number(event.target.value);
+            if (Number.isFinite(distance) && distance > 0) onPitchChange({ ...pitch, freeKickDistance: distance });
+          }}
+        />
+      </label>
+      <p className="pitch-settings-note">Дистанцию стенки можно уточнить по правилам соревнования.</p>
 
       <label>
         Время реакции

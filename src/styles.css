@@ -1953,6 +1953,14 @@ input:focus {
   justify-content: center;
 }
 
+.pitch-settings-note, .pitch-settings-error {
+  margin: 10px 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.pitch-settings-note { color: #d4e2ef; }
+.pitch-settings-error { color: #ffd2c9; padding: 10px; border: 1px solid #e97762; border-radius: 8px; }
+
 .skill-summary { display: grid; gap: 10px; margin: 12px 0; }
 .skill-summary-card { display: grid; gap: 5px; padding: 12px; border: 1px solid #4cae88; border-radius: 8px; background: rgba(52, 130, 99, 0.18); }
 .skill-summary-card.practice { border-color: #d6ad4c; background: rgba(175, 130, 40, 0.14); }

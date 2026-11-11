@@ -15,6 +15,7 @@ import { buildFeedback, criterionStatusText } from "./domain/feedback";
 import { facingAngleToBall, normalizeAngle } from "./domain/geometry";
 import { levels } from "./domain/levels";
 import { pitchPresets } from "./domain/presets";
+import { pitchSettingsError } from "./domain/pitchSettings";
 import { criteriaByScenarioType, getBallSide, type CriterionKey } from "./domain/scenarios";
 import type { CheckResult, ErrorType, Level, PitchConfig, PlayerProfile, Point, Progress, ReactionTimeSeconds, ResultKind, TrainingMode, VisualHint, WallConfig } from "./domain/types";
 import {
@@ -974,6 +975,7 @@ export function App() {
   // Журнал текущей сессии для экрана итогов.
   const [sessionLog, setSessionLog] = useState<{ levelId: string; result: ResultKind; score: number; errorType?: ErrorType }[]>([]);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const reactionPaused = !playerSelected || !onboardingComplete || settingsOpen || statsOpen || rulesQuizOpen || shootoutOpen || summaryOpen;
   const [dayStreak, setDayStreak] = useState<DayStreak | null>(null);
   const [marathonBest, setMarathonBest] = useState<number | null>(null);
   const trainingLevels = useMemo(() => {
@@ -1167,20 +1169,12 @@ export function App() {
   }, [activePlayerId, trainingMode, trainingLevels.length, customSession]);
 
   useEffect(() => {
-    if (!playerSelected) {
-      setReactionPhase(isReactionLevel ? "waiting" : "active");
-      setReactionTimeLeft(null);
-      return;
-    }
-
-    if (!isReactionLevel || result) {
+    if (!isReactionLevel) {
       setReactionPhase("active");
       setReactionTimeLeft(null);
       return;
     }
-
-    setReactionPhase("waiting");
-    setReactionTimeLeft(null);
+    if (reactionPaused || result || reactionPhase !== "waiting") return;
     const activationTimer = window.setTimeout(() => {
       setReactionPhase("active");
       setReactionTimeLeft(effectiveReactionSeconds);
@@ -1188,10 +1182,10 @@ export function App() {
     }, level.ballOwnerActivationDelayMs ?? 1200);
 
     return () => window.clearTimeout(activationTimer);
-  }, [effectiveReactionSeconds, isReactionLevel, level.ballOwnerActivationDelayMs, level.id, playerSelected, result]);
+  }, [effectiveReactionSeconds, isReactionLevel, level.ballOwnerActivationDelayMs, level.id, reactionPaused, reactionPhase, result]);
 
   useEffect(() => {
-    if (!isReactionLevel || reactionPhase !== "active" || result || reactionTimeLeft === null) {
+    if (reactionPaused || !isReactionLevel || reactionPhase !== "active" || result || reactionTimeLeft === null) {
       return;
     }
 
@@ -1211,7 +1205,7 @@ export function App() {
     }, 1000);
 
     return () => window.clearTimeout(countdownTimer);
-  }, [isReactionLevel, reactionPhase, reactionTimeLeft, result, level.reactionPass, reactionPassDone]);
+  }, [isReactionLevel, reactionPhase, reactionTimeLeft, reactionPaused, result, level.reactionPass, reactionPassDone]);
 
   function moveToLevel(nextIndex: number, shouldSave = true) {
     const safeIndex = Math.max(0, Math.min(trainingLevels.length - 1, nextIndex));
@@ -1466,6 +1460,7 @@ export function App() {
   }
 
   function saveSettings() {
+    if (pitchSettingsError(draftPitch)) return;
     handlePitchChange(draftPitch);
     setShowDimensions(draftShowDimensions);
     setReactionTimeSeconds(draftReactionTimeSeconds);
@@ -1981,7 +1976,7 @@ export function App() {
                 <X size={18} />
                 <span>Отмена</span>
               </button>
-              <button className="primary" type="button" onClick={saveSettings}>
+              <button className="primary" type="button" onClick={saveSettings} disabled={Boolean(pitchSettingsError(draftPitch))}>
                 <Save size={18} />
                 <span>Сохранить</span>
               </button>

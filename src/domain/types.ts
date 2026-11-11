@@ -146,6 +146,8 @@ export type PitchConfig = {
   fieldWidth: number;
   goalWidth: number;
   goalHeight: number;
+  // Расстояние от мяча до стенки; старые сохранения могут не содержать поле.
+  freeKickDistance?: number;
   markings: FieldMarkings;
 };
 

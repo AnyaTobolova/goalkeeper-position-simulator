@@ -37,6 +37,7 @@ export const pitchPresets: Record<PitchPresetId, PitchConfig> = {
     fieldWidth: 35,
     goalWidth: 5,
     goalHeight: 2,
+    freeKickDistance: 5,
     markings: {
       ...adultMarkings,
       centerCircleRadius: 5,
@@ -58,6 +59,7 @@ export const pitchPresets: Record<PitchPresetId, PitchConfig> = {
     fieldWidth: 40,
     goalWidth: 5,
     goalHeight: 2,
+    freeKickDistance: 7,
     markings: {
       ...adultMarkings,
       centerCircleRadius: 7,
@@ -79,6 +81,7 @@ export const pitchPresets: Record<PitchPresetId, PitchConfig> = {
     fieldWidth: 42,
     goalWidth: 5,
     goalHeight: 2,
+    freeKickDistance: 7,
     markings: {
       ...adultMarkings,
       centerCircleRadius: 7,
@@ -100,6 +103,7 @@ export const pitchPresets: Record<PitchPresetId, PitchConfig> = {
     fieldWidth: 50,
     goalWidth: 7,
     goalHeight: 2,
+    freeKickDistance: 8,
     markings: {
       ...adultMarkings,
       centerCircleRadius: 8,
@@ -121,6 +125,7 @@ export const pitchPresets: Record<PitchPresetId, PitchConfig> = {
     fieldWidth: 68,
     goalWidth: 7,
     goalHeight: 2,
+    freeKickDistance: 9.15,
     markings: adultMarkings
   },
   custom: {
@@ -132,6 +137,7 @@ export const pitchPresets: Record<PitchPresetId, PitchConfig> = {
     fieldWidth: 40,
     goalWidth: 5,
     goalHeight: 2,
+    freeKickDistance: 7,
     markings: {
       ...adultMarkings,
       centerCircleRadius: 7,
@@ -165,7 +171,7 @@ export function normalizeStoredPitch(saved: PitchConfig): PitchConfig {
 
   const goalPresetId = saved.goalPresetId === "mini_3x2" || saved.goalPresetId === "adult_732x244" ? "custom" : saved.goalPresetId;
   if (saved.presetId !== "custom" && preset) {
-    return { ...preset, goalPresetId, goalWidth: saved.goalWidth, goalHeight: saved.goalHeight };
+    return { ...preset, goalPresetId, goalWidth: saved.goalWidth, goalHeight: saved.goalHeight, freeKickDistance: saved.freeKickDistance ?? preset.freeKickDistance };
   }
   return { ...saved, goalPresetId };
 }
