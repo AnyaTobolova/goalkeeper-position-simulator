@@ -1720,9 +1720,9 @@ export function App() {
             {shownFeedback && result && result.evaluation.openGoalPercent !== undefined && (
               <div className="open-goal-row" aria-label="Открытая часть ворот">
                 <span>
-                  Нападающему открыто <strong>{result.evaluation.openGoalPercent}%</strong> ворот
+                  Нападающему примерно открыто <strong>{result.evaluation.openGoalPercent}%</strong> ворот
                 </span>
-                <span>Открытая часть отмечена оранжевым на линии ворот.</span>
+                <span>Открытая часть отмечена оранжевым на линии ворот. Это схема по земле, высота удара не учитывается.</span>
                 {result.evaluation.optimalOpenGoalPercent !== undefined && result.evaluation.optimalOpenGoalPercent < (result.evaluation.openGoalPercent ?? 0) && (
                   <span className="open-goal-best">
                     из лучшей точки - {result.evaluation.optimalOpenGoalPercent}%
@@ -1736,7 +1736,6 @@ export function App() {
             {shownFeedback && result && level.freeKick && (
               <div className="open-goal-row" aria-label="Открытая часть ворот при штрафном">
                 <span>Оранжевым показана примерная открытая часть ворот по земле. Высота удара не учитывается, фигуры увеличены для наглядности.</span>
-                <span>Это схема по земле: высота удара не учитывается.</span>
               </div>
             )}
             {shownFeedback && result?.evaluation.notes.includes("Стенка слишком близко к мячу.") && (
