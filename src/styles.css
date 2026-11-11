@@ -1953,6 +1953,14 @@ input:focus {
   justify-content: center;
 }
 
+.skill-summary { display: grid; gap: 10px; margin: 12px 0; }
+.skill-summary-card { display: grid; gap: 5px; padding: 12px; border: 1px solid #4cae88; border-radius: 8px; background: rgba(52, 130, 99, 0.18); }
+.skill-summary-card.practice { border-color: #d6ad4c; background: rgba(175, 130, 40, 0.14); }
+.skill-summary-card strong { color: #fff; font-size: 15px; }
+.skill-summary-card span, .skill-summary p { color: #d4e2ef; font-size: 14px; line-height: 1.4; }
+.stats-details { margin: 12px 0; }
+.stats-details summary { cursor: pointer; padding: 10px 0; font-weight: 700; }
+
 .error-list {
   display: grid;
   gap: 8px;

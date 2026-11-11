@@ -1,7 +1,9 @@
-import type { Level, LevelCategory, Progress } from "./types";
+import type { Level, LevelCategory, LevelProgress, Progress } from "./types";
 
-// Бейджи за освоенные навыки. Бейдж выдается за количество ситуаций
-// категории, решенных на «Отлично» (последний результат - correct).
+// Закрепление определяется по двум последним ответам «Отлично» подряд.
+export function isScenarioMastered(progress: LevelProgress | undefined): boolean {
+  return (progress?.correctStreak ?? 0) >= 2;
+}
 
 export type BadgeState = {
   id: string;
@@ -23,56 +25,56 @@ const badgeDefinitions: BadgeDefinition[] = [
   {
     id: "near-post",
     title: "Ближний угол закрыт",
-    description: "Реши на «Отлично» 4 ситуации на угол удара",
+    description: "Закрепи 4 ситуации на угол удара",
     categories: ["shot_angle"],
     goal: 4
   },
   {
     id: "depth",
     title: "Хорошая глубина",
-    description: "Реши на «Отлично» 4 ситуации на глубину позиции",
+    description: "Закрепи 4 ситуации на глубину позиции",
     categories: ["depth"],
     goal: 4
   },
   {
     id: "one-v-one",
     title: "Сильный 1-в-1",
-    description: "Реши на «Отлично» 4 выхода один в один",
+    description: "Закрепи 4 выхода один в один",
     categories: ["one_v_one"],
     goal: 4
   },
   {
     id: "reposition",
     title: "Быстрое перестроение",
-    description: "Реши на «Отлично» 5 ситуаций с пасом, прострелом или отскоком",
+    description: "Закрепи 5 ситуаций с пасом, прострелом или отскоком",
     categories: ["pass_reposition"],
     goal: 5
   },
   {
     id: "defender",
     title: "Читает защитника",
-    description: "Реши на «Отлично» 4 ситуации с давлением защитника",
+    description: "Закрепи 4 ситуации с давлением защитника",
     categories: ["defender_pressure"],
     goal: 4
   },
   {
     id: "box-master",
     title: "Хозяин штрафной",
-    description: "Реши на «Отлично» 6 угловых и навесов",
+    description: "Закрепи 6 угловых и навесов",
     categories: ["corner", "cross"],
     goal: 6
   },
   {
     id: "set-piece",
     title: "Мастер стандартов",
-    description: "Реши на «Отлично» 5 штрафных и пенальти",
+    description: "Закрепи 5 штрафных и пенальти",
     categories: ["free_kick", "penalty"],
     goal: 5
   },
   {
     id: "reaction",
     title: "Молния",
-    description: "Реши на «Отлично» 8 реакционных сценариев",
+    description: "Закрепи 8 реакционных сценариев",
     categories: ["reaction"],
     goal: 8
   }
@@ -81,7 +83,7 @@ const badgeDefinitions: BadgeDefinition[] = [
 export function computeBadges(progress: Progress, allLevels: Level[], penaltyBest: number | null): BadgeState[] {
   const states = badgeDefinitions.map((definition) => {
     const solved = allLevels.filter(
-      (level) => definition.categories.includes(level.category) && progress[level.id]?.lastResult === "correct"
+      (level) => definition.categories.includes(level.category) && isScenarioMastered(progress[level.id])
     ).length;
     const count = Math.min(solved, definition.goal);
 

@@ -1,7 +1,8 @@
 import { AlertTriangle, Award, BarChart3, ListRestart, Trash2 } from "lucide-react";
 import type { ErrorType, Level, PlayerProfile, Progress } from "../domain/types";
 import { levels as allLevels } from "../domain/levels";
-import { computeBadges } from "../domain/badges";
+import { computeBadges, isScenarioMastered } from "../domain/badges";
+import { summarizeSkills } from "../domain/skillSummary";
 import { loadPenaltyBest } from "../storage";
 
 type StatsPanelProps = {
@@ -79,7 +80,7 @@ function collectErrorStats(progress: Progress) {
 function collectWeakLevels(levels: Level[], progress: Progress) {
   return levels
     .map((level) => ({ level, progress: progress[level.id] }))
-    .filter(({ progress: item }) => item?.needsRepeat || (item?.wrongAttempts ?? 0) > 0 || (item?.almostAttempts ?? 0) > 0)
+    .filter(({ progress: item }) => item?.needsRepeat)
     .sort((a, b) => {
       const aMistakes = (a.progress?.wrongAttempts ?? 0) * 2 + (a.progress?.almostAttempts ?? 0);
       const bMistakes = (b.progress?.wrongAttempts ?? 0) * 2 + (b.progress?.almostAttempts ?? 0);
@@ -95,7 +96,8 @@ export function StatsPanel({ levels, players, activePlayerId, selectedPlayerId, 
   const weakLevels = collectWeakLevels(levels, progress);
   const attempts = Object.values(progress).reduce((sum, item) => sum + item.attempts, 0);
   const mistakes = Object.values(progress).reduce((sum, item) => sum + (item.wrongAttempts ?? 0) + (item.almostAttempts ?? 0), 0);
-  const mastered = levels.filter((level) => progress[level.id]?.correctStreak >= 2).length;
+  const mastered = levels.filter((level) => isScenarioMastered(progress[level.id])).length;
+  const skills = summarizeSkills(levels, progress);
   const badges = computeBadges(progress, allLevels, loadPenaltyBest(selectedPlayerId));
   const earnedBadges = badges.filter((badge) => badge.earned).length;
 
@@ -103,7 +105,7 @@ export function StatsPanel({ levels, players, activePlayerId, selectedPlayerId, 
     <section className="panel stats-panel">
       <div className="panel-title">
         <BarChart3 size={18} />
-        <span>Ошибки</span>
+        <span>Твои успехи</span>
       </div>
 
       <label className="stats-player-select">
@@ -131,6 +133,20 @@ export function StatsPanel({ levels, players, activePlayerId, selectedPlayerId, 
         )}
       </div>
 
+      <div className="skill-summary">
+        <div className="skill-summary-card">
+          <strong>Хорошо получается</strong>
+          <span>{skills.strong.length ? skills.strong.map((item) => item.title).join(", ") : "Потренируйся ещё немного — здесь появятся твои сильные темы."}</span>
+        </div>
+        <div className="skill-summary-card practice">
+          <strong>Потренируем</strong>
+          <span>{skills.practice.length ? skills.practice.map((item) => item.title).join(", ") : "Здесь появятся темы, которым стоит уделить больше времени."}</span>
+        </div>
+        <p>Учитываем все записанные попытки: не менее трёх в теме и двух разных ситуаций. Ситуация закреплена после двух «Отлично» подряд.</p>
+      </div>
+
+      <details className="stats-details">
+      <summary>Подробности и результаты</summary>
       <div className="summary-row">
         <span>Попыток</span>
         <strong>{attempts}</strong>
@@ -177,6 +193,7 @@ export function StatsPanel({ levels, players, activePlayerId, selectedPlayerId, 
           ))}
         </div>
       )}
+      </details>
 
       <div className="mini-title badges-title">
         <Award size={16} />

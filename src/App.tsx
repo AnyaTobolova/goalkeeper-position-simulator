@@ -8,7 +8,7 @@ import { checkAnswer, resolveTimeoutResult } from "./domain/evaluate";
 import { applyLevelVariation, mirrorLevel } from "./domain/variation";
 import { RulesQuiz } from "./components/RulesQuiz";
 import { PenaltyShootout } from "./components/PenaltyShootout";
-import { computeBadges, keeperRank, newlyEarnedBadges, type BadgeState } from "./domain/badges";
+import { computeBadges, isScenarioMastered, keeperRank, newlyEarnedBadges, type BadgeState } from "./domain/badges";
 import { isSoundOn, playBadge, playKick, playResult, playWhistle, setSoundOn } from "./sounds";
 import { buildFeedback, criterionStatusText } from "./domain/feedback";
 import { facingAngleToBall, normalizeAngle } from "./domain/geometry";
@@ -295,7 +295,7 @@ function updateProgress(progress: Progress, level: Level, result: CheckResult): 
 }
 
 function masteredCount(progress: Progress, trainingLevels: Level[]) {
-  return trainingLevels.filter((level) => progress[level.id]?.correctStreak >= 2).length;
+  return trainingLevels.filter((level) => isScenarioMastered(progress[level.id])).length;
 }
 
 function createPlayer(name: string): PlayerProfile {
@@ -1109,7 +1109,7 @@ export function App() {
   const statsPlayer = players.find((player) => player.id === statsPlayerId) ?? activePlayer;
 
   const weakSpotsCount = useMemo(() => levels.filter((item) => progress[item.id]?.needsRepeat).length, [progress]);
-  const masteredAllCount = useMemo(() => levels.filter((item) => (progress[item.id]?.correctStreak ?? 0) >= 2).length, [progress]);
+  const masteredAllCount = useMemo(() => levels.filter((item) => isScenarioMastered(progress[item.id])).length, [progress]);
 
   const weakTopic = useMemo(() => {
     const repeated = trainingLevels.find((item) => progress[item.id]?.needsRepeat);
