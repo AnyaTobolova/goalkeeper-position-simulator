@@ -367,9 +367,9 @@ h2 {
 
 .goal-net {
   fill: url("#goal-net-pattern");
-  stroke: rgba(244, 255, 245, 0.52);
-  stroke-width: 0.18;
-  opacity: 0.94;
+  stroke: rgba(255, 255, 255, 0.78);
+  stroke-width: 0.16;
+  opacity: 1;
 }
 
 .goal-apron {
@@ -377,7 +377,7 @@ h2 {
 }
 
 .goal-mouth {
-  fill: rgba(235, 255, 236, 0.08);
+  fill: url("#goal-interior");
   stroke: rgba(255, 255, 255, 0.22);
   stroke-width: 0.22;
 }
@@ -410,13 +410,13 @@ h2 {
 }
 
 .goal-backbar {
-  stroke: rgba(245, 250, 245, 0.78);
-  stroke-width: 0.62;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 0.66;
 }
 
 .goal-side-net {
-  stroke: rgba(244, 255, 245, 0.72);
-  stroke-width: 0.58;
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 0.6;
 }
 
 .goal-post-cap {
@@ -579,77 +579,79 @@ h2 {
 
 .figure-shirt,
 .figure-shorts,
-.keeper-shirt,
-.keeper-shorts {
-  stroke: rgba(7, 19, 13, 0.7);
-  stroke-width: 0.22;
+.figure-sleeve {
+  stroke: rgba(7, 14, 24, 0.7);
+  stroke-width: 0.2;
   stroke-linejoin: round;
 }
 
-.figure-sleeve,
-.figure-sock,
-.keeper-leg,
-.keeper-arm {
-  fill: none;
-  stroke-width: 0.5;
-  stroke-linecap: round;
+.figure-shirt-shade {
+  fill: rgba(0, 0, 0, 0.13);
+  stroke: none;
+}
+
+.figure-sock {
+  fill: #f2f6ff;
+  stroke: rgba(7, 14, 24, 0.5);
+  stroke-width: 0.14;
   stroke-linejoin: round;
 }
 
-.attacker-figure .figure-shirt {
-  fill: #ff7a59;
+.figure-boot {
+  fill: #1b2030;
+  stroke: rgba(0, 0, 0, 0.5);
+  stroke-width: 0.12;
+}
+
+/* Атака — красные */
+.attacker-figure .figure-shirt,
+.attacker-figure .figure-sleeve {
+  fill: #e23b3b;
 }
 
 .attacker-figure .figure-shorts {
-  fill: #283653;
+  fill: #f4f6fb;
 }
 
-.attacker-figure .figure-sleeve,
-.attacker-figure .figure-sock {
-  stroke: #ffe2c6;
-}
-
-.defender-figure .figure-shirt {
-  fill: #42a5ff;
+/* Стенка и защита — синие */
+.defender-figure .figure-shirt,
+.defender-figure .figure-sleeve {
+  fill: #2f6df6;
 }
 
 .defender-figure .figure-shorts {
-  fill: #173151;
+  fill: #f4f6fb;
 }
 
-.defender-figure .figure-sleeve,
-.defender-figure .figure-sock {
-  stroke: #d9edff;
+/* Вратарь — жёлтый */
+.keeper-figure .figure-shirt,
+.keeper-figure .figure-sleeve {
+  fill: #ffcf33;
 }
 
-.keeper-shirt {
-  fill: #9be47a;
+.keeper-figure .figure-shorts {
+  fill: #1c2740;
 }
 
-.keeper-shorts {
-  fill: #155832;
-}
-
-.keeper-leg,
-.keeper-arm {
-  stroke: #dff5e3;
+.keeper-figure .figure-sock {
+  fill: #ffe08a;
 }
 
 .keeper-glove {
   fill: #f3fbf5;
   stroke: #102218;
-  stroke-width: 0.24;
+  stroke-width: 0.22;
 }
 
 .keeper-facing-mark {
-  fill: #f6c453;
-  stroke: rgba(7, 19, 13, 0.74);
+  fill: #ffd34a;
+  stroke: rgba(7, 14, 24, 0.74);
   stroke-width: 0.2;
 }
 
 .keeper-facing-cone {
-  fill: rgba(246, 196, 83, 0.18);
-  stroke: rgba(246, 196, 83, 0.9);
+  fill: rgba(255, 211, 74, 0.2);
+  stroke: rgba(255, 211, 74, 0.92);
   stroke-width: 0.22;
 }
 
@@ -659,7 +661,7 @@ h2 {
 }
 
 .keeper-direction-hit {
-  fill: rgba(246, 196, 83, 0.001);
+  fill: rgba(255, 211, 74, 0.001);
   stroke: none;
 }
 
@@ -669,22 +671,6 @@ h2 {
 
 .wall-figure {
   pointer-events: none;
-  filter: drop-shadow(0 0.6px 1px rgba(0, 0, 0, 0.36));
-}
-
-.wall-shirt {
-  fill: #42a5ff;
-  stroke: rgba(7, 19, 13, 0.72);
-  stroke-width: 0.18;
-  stroke-linejoin: round;
-}
-
-.wall-arm,
-.wall-leg {
-  fill: none;
-  stroke: #d9edff;
-  stroke-width: 0.42;
-  stroke-linecap: round;
 }
 
 .wall-hit {
@@ -3211,4 +3197,286 @@ input:focus {
 .start-modal .start-primary-row button,
 .start-modal .mode-grid button {
   min-height: 48px;
+}
+
+/* ===================================================================== */
+/* Тёмно-синяя спортивная тема (Этап 1). Поздние правила перекрывают      */
+/* ранние. Смысловые цвета (зелёный «Отлично», газон) не трогаем.         */
+/* ===================================================================== */
+:root {
+  --navy-0: #080e22;
+  --navy-surface: #15224a;
+  --navy-raised: #1d2c5a;
+  --navy-border: rgba(132, 162, 232, 0.2);
+  --blue: #3b82f6;
+  --blue-strong: #2f6df6;
+  --yellow: #ffcf33;
+  --ink: #eaf0ff;
+  --muted: #9fb0d6;
+}
+
+body {
+  background: var(--navy-0);
+  color: var(--ink);
+}
+
+.app {
+  background:
+    radial-gradient(130% 70% at 50% -12%, rgba(59, 130, 246, 0.22), transparent 55%),
+    linear-gradient(180deg, #0f1a3e 0%, #0a1024 60%, #080e22 100%);
+}
+
+button {
+  background: var(--navy-raised);
+  color: var(--ink);
+}
+
+button:hover {
+  background: #26376e;
+}
+
+.primary {
+  color: #ffffff;
+  background: linear-gradient(180deg, #4a90ff, var(--blue-strong));
+  box-shadow: 0 6px 16px rgba(47, 109, 246, 0.4);
+}
+
+.primary:hover {
+  background: linear-gradient(180deg, #5a9bff, #356ff0);
+}
+
+.eyebrow {
+  color: #8fb4ff;
+}
+
+h1,
+.topbar h1 {
+  color: var(--ink);
+}
+
+/* Карточки прогресса и панели */
+.top-stats > div,
+.reaction-timer-banner,
+.panel,
+.start-section,
+.why-card,
+.how-card,
+.open-goal-row,
+.reaction-status,
+.data-transfer .ghost,
+.install-banner {
+  background: var(--navy-surface);
+  border-color: var(--navy-border);
+}
+
+.top-stats small,
+.summary-row span,
+.score-card span,
+.session-hint,
+.rank-line,
+.records-line,
+.summary-line {
+  color: var(--muted);
+}
+
+.rank-line strong,
+.streak.active span,
+.top-stats .streak.active span {
+  color: var(--yellow);
+}
+
+/* Рамка поля — тёмно-синяя */
+.field-shell {
+  border-color: var(--navy-border);
+  background: #0e1836;
+}
+
+/* Плашка уровня + чип категории (как в референсе) */
+.level-strip {
+  background: linear-gradient(180deg, #16244e, #111c3f);
+  border-color: var(--navy-border);
+}
+
+.badge {
+  color: #0a1430;
+  background: var(--yellow);
+}
+
+/* Модалки */
+.modal {
+  background: linear-gradient(180deg, #121d42, #0d1631);
+  border: 1px solid var(--navy-border);
+}
+
+.modal-backdrop {
+  background: rgba(6, 10, 26, 0.72);
+}
+
+.modal-header {
+  border-color: var(--navy-border);
+}
+
+.modal-actions {
+  background: rgba(13, 22, 49, 0.96);
+  border-color: var(--navy-border);
+}
+
+.panel-title {
+  color: var(--ink);
+}
+
+/* Переключатели База/Реакция и активные состояния */
+.mode-switch button.active,
+.start-mode-choice button.active {
+  background: linear-gradient(180deg, #3f82f8, var(--blue-strong));
+  border-color: rgba(120, 165, 255, 0.7);
+  color: #ffffff;
+}
+
+.start-mode-choice button {
+  border-color: var(--navy-border);
+}
+
+.start-mode-choice button span,
+.mode-grid button span {
+  color: inherit;
+}
+
+.day-training-button {
+  border-color: rgba(120, 165, 255, 0.6);
+}
+
+/* Разбор: критерии оставляем смысловыми, но фон строк — синий */
+.criterion-row,
+.zone-legend,
+.result-legend,
+.badge-card {
+  background: var(--navy-surface);
+  border-color: var(--navy-border);
+}
+
+/* Кнопка-чип игрока в шапке */
+.player-chip {
+  background: var(--navy-raised);
+}
+
+/* Поворотные кнопки корпуса, иконки */
+.turn-buttons button,
+.icon-only,
+.ghost {
+  background: var(--navy-raised);
+}
+
+/* Нижняя панель действий на телефоне */
+.mobile-action-bar {
+  background: linear-gradient(180deg, rgba(13, 22, 49, 0.4), #0b1430 40%);
+  border-color: var(--navy-border);
+}
+
+/* Тема: поля ввода, подписи секций, свёрнутое управление игроками */
+select,
+input {
+  background: #142247;
+  border-color: var(--navy-border);
+  color: var(--ink);
+}
+
+select:focus,
+input:focus {
+  border-color: #5a9bff;
+}
+
+.start-section-label {
+  color: #8fb4ff;
+}
+
+.player-manage {
+  margin-top: 2px;
+  border: 1px solid var(--navy-border);
+  border-radius: 10px;
+  background: rgba(20, 34, 71, 0.5);
+  padding: 2px 12px;
+}
+
+.player-manage summary {
+  cursor: pointer;
+  list-style: none;
+  color: #a7badf;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 9px 0;
+}
+
+.player-manage summary::-webkit-details-marker {
+  display: none;
+}
+
+.player-manage summary::before {
+  content: "▸ ";
+  color: #8fb4ff;
+}
+
+.player-manage[open] summary::before {
+  content: "▾ ";
+}
+
+.player-manage .add-player-row {
+  margin: 2px 0 8px;
+}
+
+/* 3D-объём фигур: блики на футболке и голове, более глубокая тень */
+.figure,
+.goalkeeper-figure {
+  filter: drop-shadow(0 0.7px 1.5px rgba(0, 0, 0, 0.48));
+}
+
+.figure-shadow {
+  fill: rgba(0, 0, 0, 0.32);
+}
+
+.figure-shirt-light {
+  fill: rgba(255, 255, 255, 0.24);
+  stroke: none;
+}
+
+.figure-head-light {
+  fill: rgba(255, 255, 255, 0.4);
+  stroke: none;
+}
+
+.figure-boot {
+  fill: #161a27;
+}
+
+/* Плашка статуса до ответа — синяя (смысловые цвета результата не трогаем) */
+.result-pill {
+  background: var(--navy-raised);
+  color: var(--ink);
+}
+
+/* Объёмный 2D: градиенты формы и кожи (перекрывают плоские заливки выше) */
+.attacker-figure .figure-shirt {
+  fill: url(#shirt-red);
+}
+.attacker-figure .figure-sleeve {
+  fill: #cf3333;
+}
+.defender-figure .figure-shirt {
+  fill: url(#shirt-blue);
+}
+.defender-figure .figure-sleeve {
+  fill: #2960e0;
+}
+.keeper-figure .figure-shirt {
+  fill: url(#shirt-yellow);
+}
+.keeper-figure .figure-sleeve {
+  fill: #efbc27;
+}
+.attacker-figure .figure-shorts,
+.defender-figure .figure-shorts {
+  fill: url(#shorts-white);
+}
+.figure-head {
+  fill: url(#skin-shade);
 }

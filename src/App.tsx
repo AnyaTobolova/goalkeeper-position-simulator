@@ -2224,6 +2224,7 @@ export function App() {
                   players={players}
                   activePlayerId={activePlayerId}
                   newPlayerName={newPlayerName}
+                  compact
                   onActivePlayerChange={setActivePlayerId}
                   onNewPlayerNameChange={setNewPlayerName}
                   onAddPlayer={addPlayer}

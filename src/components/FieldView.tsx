@@ -76,6 +76,68 @@ function useCompactField() {
   return compact;
 }
 
+// Единая фигура футболиста (вид сверху-спереди): голова, футболка с рукавами,
+// шорты, гетры и тёмные бутсы, мягкая тень. Одним размером для всех ролей —
+// атака, стенка, вратарь — чтобы в сцене все были соразмерны.
+// Прототип: переключатель между векторными фигурами (false) и растровыми спрайтами (true).
+// Чтобы вернуться к вектору — поставить false.
+const USE_SPRITES = true;
+// Спрайты по ролям: вратарь и стенка смотрят на мяч (вид сзади),
+// нападающие идут на ворота к камере (вид спереди).
+// Детские фигуры (вратарь пока взрослый — заглушка до детского спрайта).
+const SPRITE_KEEPER = "/sprites/keeper-child-stance.png";
+const SPRITE_ATTACKER = "/sprites/attacker-child-red-front.png";
+const SPRITE_DEFENDER = "/sprites/defender-child-blue-back.png";
+
+function FootballerBody({ hasBall, keeper, role }: { hasBall?: boolean; keeper?: boolean; role?: "attacker" | "defender" }) {
+  if (USE_SPRITES) {
+    const href = keeper ? SPRITE_KEEPER : role === "defender" ? SPRITE_DEFENDER : SPRITE_ATTACKER;
+    return (
+      <g>
+        {hasBall && <circle className="player-focus-ring" cx="0" cy="-1.9" r="1.75" />}
+        {/* Спрайт 512×512: ступни ≈ на 90% высоты, центр по горизонтали.
+            Ставим так, чтобы ноги попали в точку установки (0,0). */}
+        <image href={href} x={-5} y={-9} width={10} height={10} preserveAspectRatio="xMidYMid meet" />
+      </g>
+    );
+  }
+  return (
+    <g transform="translate(0 -3.85)">
+      {hasBall && <circle className="player-focus-ring" cx="0" cy="1.95" r="1.75" />}
+      <ellipse className="figure-shadow" cx="0" cy="3.95" rx="1.95" ry="0.6" />
+
+      {/* гетры (носки) и бутсы */}
+      <path className="figure-sock" d="M -0.92 1.7 L -0.28 1.7 L -0.4 3.55 L -0.96 3.55 Z" />
+      <path className="figure-sock" d="M 0.28 1.7 L 0.92 1.7 L 0.96 3.55 L 0.4 3.55 Z" />
+      <ellipse className="figure-boot" cx="-0.7" cy="3.72" rx="0.6" ry="0.38" />
+      <ellipse className="figure-boot" cx="0.7" cy="3.72" rx="0.6" ry="0.38" />
+
+      {/* шорты */}
+      <path className="figure-shorts" d="M -1.24 0.82 L 1.24 0.82 L 1.0 2.0 L -1.0 2.0 Z" />
+
+      {/* рукава и футболка */}
+      <path className="figure-sleeve" d="M -1.46 -2.05 L -2.28 -1.2 L -1.78 -0.4 L -1.3 -1.35 Z" />
+      <path className="figure-sleeve" d="M 1.46 -2.05 L 2.28 -1.2 L 1.78 -0.4 L 1.3 -1.35 Z" />
+      <path className="figure-shirt" d="M -1.5 -2.2 Q 0 -2.55 1.5 -2.2 L 1.68 0.95 Q 0 1.55 -1.68 0.95 Z" />
+      {/* блик сверху и тень снизу — объём */}
+      <path className="figure-shirt-light" d="M -1.42 -2.1 Q 0 -2.42 1.42 -2.1 L 1.2 -0.85 Q 0 -1.18 -1.2 -0.85 Z" />
+      <path className="figure-shirt-shade" d="M -1.66 0.35 Q 0 0.98 1.66 0.35 L 1.68 0.95 Q 0 1.55 -1.68 0.95 Z" />
+
+      {keeper && (
+        <>
+          <circle className="keeper-glove" cx="-2.5" cy="-0.5" r="0.5" />
+          <circle className="keeper-glove" cx="2.5" cy="-0.5" r="0.5" />
+        </>
+      )}
+
+      {/* голова и волосы */}
+      <circle className="figure-head" cx="0" cy="-3.05" r="0.84" />
+      <circle className="figure-head-light" cx="-0.26" cy="-3.32" r="0.42" />
+      <path className="figure-hair" d="M -0.74 -3.2 Q 0 -4.12 0.8 -3.2 Q 0.2 -3.66 -0.74 -3.2" />
+    </g>
+  );
+}
+
 function PlayerFigure({ x, y, role, hasBall, scale, animate }: { x: number; y: number; role: "attacker" | "defender"; hasBall?: boolean; scale: number; animate?: boolean }) {
   const className = role === "attacker" ? "figure attacker-figure" : "figure defender-figure";
 
@@ -85,18 +147,7 @@ function PlayerFigure({ x, y, role, hasBall, scale, animate }: { x: number; y: n
       transform={animate ? undefined : `translate(${x} ${y}) scale(${scale})`}
       style={animate ? { transform: `translate(${x}px, ${y}px) scale(${scale})`, transition: "transform 0.9s ease-out" } : undefined}
     >
-      <g transform="translate(0 -3.85)">
-        {hasBall && <circle className="player-focus-ring" cx="0" cy="1.9" r="1.55" />}
-        <ellipse className="figure-shadow" cx="0" cy="3.8" rx="1.75" ry="0.55" />
-        <circle className="figure-head" cx="0" cy="-3.1" r="0.72" />
-        <path className="figure-hair" d="M -0.65 -3.25 Q 0 -4.05 0.72 -3.25 Q 0.18 -3.55 -0.65 -3.25" />
-        <path className="figure-shirt" d="M -1.35 -2.15 L 1.35 -2.15 L 1.65 0.75 Q 0 1.35 -1.65 0.75 Z" />
-        <path className="figure-sleeve" d="M -1.35 -1.95 L -2.25 -0.55" />
-        <path className="figure-sleeve" d="M 1.35 -1.95 L 2.25 -0.55" />
-        <path className="figure-shorts" d="M -1.2 0.95 L 1.2 0.95 L 0.82 2.05 L -0.82 2.05 Z" />
-        <path className="figure-sock" d="M -0.62 2 L -1.05 3.8" />
-        <path className="figure-sock" d="M 0.62 2 L 1.05 3.8" />
-      </g>
+      <FootballerBody hasBall={hasBall} role={role} />
     </g>
   );
 }
@@ -117,9 +168,8 @@ function GoalkeeperFigure({
   onDirectionPointerMove: (event: React.PointerEvent<SVGGElement>) => void;
 }) {
   return (
-    <g className="goalkeeper-figure" transform={`translate(${x} ${y}) scale(${scale})`}>
+    <g className="figure goalkeeper-figure keeper-figure" transform={`translate(${x} ${y}) scale(${scale})`}>
       <g transform="translate(0 -3.85)">
-        <ellipse className="figure-shadow" cx="0" cy="3.9" rx="1.9" ry="0.55" />
         <g
           className="keeper-direction"
           transform={`translate(0 1.4) rotate(${facing}) translate(0 -1.4)`}
@@ -127,45 +177,28 @@ function GoalkeeperFigure({
           onPointerMove={onDirectionPointerMove}
         >
           <circle className="keeper-direction-hit" cx="0" cy="-4.05" r="4.2" />
-          <path className="keeper-facing-cone" d="M 0 -6.15 L -2 -2.25 L 2 -2.25 Z" />
-          <path className="keeper-facing-mark" d="M 0 -5.85 L -0.92 -4.35 L 0.92 -4.35 Z" />
+          <path className="keeper-facing-cone" d="M 0 -6.4 L -2.1 -2.3 L 2.1 -2.3 Z" />
+          <path className="keeper-facing-mark" d="M 0 -6.05 L -0.98 -4.4 L 0.98 -4.4 Z" />
         </g>
-        <circle className="figure-head" cx="0" cy="-3.25" r="0.78" />
-        <path className="figure-hair" d="M -0.7 -3.3 Q 0 -4.08 0.76 -3.3 Q 0.2 -3.6 -0.7 -3.3" />
-        <path className="keeper-shirt" d="M -1.45 -2.2 L 1.45 -2.2 L 1.72 0.8 Q 0 1.42 -1.72 0.8 Z" />
-        <path className="keeper-arm" d="M -1.42 -1.85 L -2.65 -0.2" />
-        <path className="keeper-arm" d="M 1.42 -1.85 L 2.65 -0.2" />
-        <path className="keeper-shorts" d="M -1.18 0.95 L 1.18 0.95 L 0.8 2.1 L -0.8 2.1 Z" />
-        <path className="keeper-leg" d="M -0.58 2 L -1.1 3.85" />
-        <path className="keeper-leg" d="M 0.58 2 L 1.1 3.85" />
-        <circle className="keeper-glove" cx="-2.75" cy="-0.05" r="0.42" />
-        <circle className="keeper-glove" cx="2.75" cy="-0.05" r="0.42" />
       </g>
+      <FootballerBody keeper />
     </g>
   );
 }
 
+// Стенка: ряд обычных фигур футболистов в полный размер, плечом к плечу,
+// двигается целиком. Количество задаётся игроком.
 function WallFigure({ x, y, count, scale }: { x: number; y: number; count: number; scale: number }) {
-  const spacing = 1.65;
+  const spacing = 2.55;
   const start = -((count - 1) * spacing) / 2;
 
   return (
     <g className="wall-figure" transform={`translate(${x} ${y}) scale(${scale})`}>
-      {Array.from({ length: count }).map((_, index) => {
-        const playerX = start + index * spacing;
-
-        return (
-          <g key={index} className="wall-player" transform={`translate(${playerX} 0)`}>
-            <ellipse className="figure-shadow" cx="0" cy="1.5" rx="1" ry="0.32" />
-            <circle className="figure-head" cx="0" cy="-2.65" r="0.56" />
-            <path className="wall-shirt" d="M -0.95 -1.9 L 0.95 -1.9 L 1.12 0.2 Q 0 0.72 -1.12 0.2 Z" />
-            <path className="wall-arm" d="M -0.9 -1.45 L -1.45 -0.15" />
-            <path className="wall-arm" d="M 0.9 -1.45 L 1.45 -0.15" />
-            <path className="wall-leg" d="M -0.35 0.45 L -0.65 1.55" />
-            <path className="wall-leg" d="M 0.35 0.45 L 0.65 1.55" />
-          </g>
-        );
-      })}
+      {Array.from({ length: count }).map((_, index) => (
+        <g key={index} className="figure defender-figure" transform={`translate(${start + index * spacing} 0)`}>
+          <FootballerBody role="defender" />
+        </g>
+      ))}
     </g>
   );
 }
@@ -287,8 +320,8 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
   const goalSvgWidth = pitch.goalWidth * scaleX;
   const playerScale = compactField ? 0.92 : 0.78;
   const goalkeeperScale = compactField ? 1.02 : 0.84;
-  const wallScale = compactField ? 0.78 : 0.66;
-  const goalDepth = Math.max(compactField ? 7.2 : 5.8, Math.min(compactField ? 10.5 : 9, goalSvgWidth * (compactField ? 0.88 : 0.72)));
+  // Глубина сетки у земли реалистична при ~0.36 от ширины ворот (а не почти в ширину).
+  const goalDepth = Math.max(3, Math.min(8, goalSvgWidth * 0.36));
   const playerSvgPoints = level.players.map((player) => percentToSvg(player));
   const importantY = [ball.y, keeperSvg.y, ...(wallSvg ? [wallSvg.y] : []), ...playerSvgPoints.map((point) => point.y)];
   const importantX = [goalSvgX, goalSvgX + goalSvgWidth, ball.x, keeperSvg.x, ...(wallSvg ? [wallSvg.x] : []), ...playerSvgPoints.map((point) => point.x)];
@@ -400,17 +433,76 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
     <div className="field-shell">
       <svg ref={svgRef} className="field" viewBox={viewBox} role="img" aria-label="Футбольное поле">
         <defs>
-          <pattern id="grass" width="10" height="10" patternUnits="userSpaceOnUse">
-            <rect width="10" height="10" fill="#116b3b" />
-            <rect width="10" height="5" fill="#147643" />
+          <linearGradient id="grass-stripe-a" x1="0%" x2="0%" y1="0%" y2="100%">
+            <stop offset="0%" stopColor="#2f8d4d" />
+            <stop offset="100%" stopColor="#2a844a" />
+          </linearGradient>
+          <linearGradient id="grass-stripe-b" x1="0%" x2="0%" y1="0%" y2="100%">
+            <stop offset="0%" stopColor="#246f3c" />
+            <stop offset="100%" stopColor="#206538" />
+          </linearGradient>
+          <pattern id="grass" width="120" height="16" patternUnits="userSpaceOnUse">
+            <rect width="120" height="16" fill="url(#grass-stripe-b)" />
+            <rect width="120" height="8" fill="url(#grass-stripe-a)" />
           </pattern>
-          <pattern id="goal-net-pattern" width="2" height="1.75" patternUnits="userSpaceOnUse">
-            <path d="M 1 0 L 2 0.44 L 2 1.31 L 1 1.75 L 0 1.31 L 0 0.44 Z" fill="none" stroke="rgba(255,255,255,0.48)" strokeWidth="0.16" />
+          {/* Зернистая текстура травы: мелкий фрактальный шум - тёмные и светлые
+              крапинки, чтобы газон не был плоским (без картинок). */}
+          <filter id="turf-dark" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="1.7" numOctaves="2" seed="11" stitchTiles="stitch" result="n" />
+            <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.9 0.9 0.9 0 -1.05" />
+          </filter>
+          <filter id="turf-light" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="2" numOctaves="2" seed="4" stitchTiles="stitch" result="n" />
+            <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.9 0.9 0.9 0 -1.1" />
+          </filter>
+          <linearGradient id="grass-light" x1="0%" x2="0%" y1="0%" y2="100%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.12)" />
+            <stop offset="42%" stopColor="rgba(255,255,255,0.03)" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0.16)" />
+          </linearGradient>
+          <radialGradient id="grass-vignette" cx="50%" cy="40%" r="80%">
+            <stop offset="55%" stopColor="rgba(0,0,0,0)" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0.32)" />
+          </radialGradient>
+          {/* Градиенты формы и кожи — объём фигур без картинок */}
+          <linearGradient id="shirt-red" x1="0%" x2="0%" y1="0%" y2="100%">
+            <stop offset="0%" stopColor="#ff6a63" />
+            <stop offset="52%" stopColor="#e23b3b" />
+            <stop offset="100%" stopColor="#b02626" />
+          </linearGradient>
+          <linearGradient id="shirt-blue" x1="0%" x2="0%" y1="0%" y2="100%">
+            <stop offset="0%" stopColor="#64a4ff" />
+            <stop offset="52%" stopColor="#2f6df6" />
+            <stop offset="100%" stopColor="#1c4bbd" />
+          </linearGradient>
+          <linearGradient id="shirt-yellow" x1="0%" x2="0%" y1="0%" y2="100%">
+            <stop offset="0%" stopColor="#ffe579" />
+            <stop offset="52%" stopColor="#ffcf33" />
+            <stop offset="100%" stopColor="#e0a21c" />
+          </linearGradient>
+          <linearGradient id="shorts-white" x1="0%" x2="0%" y1="0%" y2="100%">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="100%" stopColor="#d4dcea" />
+          </linearGradient>
+          <radialGradient id="skin-shade" cx="38%" cy="32%" r="75%">
+            <stop offset="0%" stopColor="#ffe9d2" />
+            <stop offset="100%" stopColor="#e9bd97" />
+          </radialGradient>
+          <filter id="figure-soft-shadow" x="-40%" y="-40%" width="180%" height="180%">
+            <feDropShadow dx="0" dy="0.6" stdDeviation="0.5" floodColor="#000000" floodOpacity="0.5" />
+          </filter>
+          <pattern id="goal-net-pattern" width="1.3" height="1.15" patternUnits="userSpaceOnUse">
+            <path d="M 0.65 0 L 1.3 0.29 L 1.3 0.86 L 0.65 1.15 L 0 0.86 L 0 0.29 Z" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="0.12" />
           </pattern>
           <linearGradient id="goal-frame-gradient" x1="0%" x2="0%" y1="0%" y2="100%">
             <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="55%" stopColor="#f3f7f1" />
-            <stop offset="100%" stopColor="#cbd4ca" />
+            <stop offset="60%" stopColor="#f6faf5" />
+            <stop offset="100%" stopColor="#e4eae2" />
+          </linearGradient>
+          {/* глубина ворот: лёгкая тень у линии, темнее к задней стенке */}
+          <linearGradient id="goal-interior" x1="0%" x2="0%" y1="0%" y2="100%">
+            <stop offset="0%" stopColor="#0a140e" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="#050a07" stopOpacity="0.5" />
           </linearGradient>
           <radialGradient id="ball-shade" cx="35%" cy="30%" r="70%">
             <stop offset="0%" stopColor="#ffffff" />
@@ -426,6 +518,10 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
         </defs>
 
         <rect x="0" y="0" width={viewBoxWidth} height={fieldHeight} rx="1" fill="url(#grass)" />
+        <rect x="0" y="0" width={viewBoxWidth} height={fieldHeight} rx="1" fill="#000" filter="url(#turf-dark)" opacity="0.16" />
+        <rect x="0" y="0" width={viewBoxWidth} height={fieldHeight} rx="1" fill="#fff" filter="url(#turf-light)" opacity="0.1" />
+        <rect x="0" y="0" width={viewBoxWidth} height={fieldHeight} rx="1" fill="url(#grass-light)" />
+        <rect x="0" y="0" width={viewBoxWidth} height={fieldHeight} rx="1" fill="url(#grass-vignette)" />
         <rect className="line" x="0" y="0" width={viewBoxWidth} height={fieldHeight} />
         <line className="line muted" x1="0" y1={fieldHeight / 2} x2={viewBoxWidth} y2={fieldHeight / 2} />
         <circle className="line muted" cx={viewBoxWidth / 2} cy={fieldHeight / 2} r={(box.centerCircleRadius ?? 7) * scaleX} />
@@ -570,15 +666,15 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
           <>
             <rect
               className="wall-hit"
-              x={wallSvg.x - Math.max(4.5, wall.count * 1.4)}
-              y={wallSvg.y - 4.4}
-              width={Math.max(9, wall.count * 2.8)}
-              height="8"
+              x={wallSvg.x - ((wall.count - 1) * 2.55 / 2 + 2.6) * playerScale}
+              y={wallSvg.y - 8.4 * playerScale}
+              width={((wall.count - 1) * 2.55 + 5.2) * playerScale}
+              height={9.2 * playerScale}
               rx="2"
               onPointerDown={handleWallPointerDown}
               onPointerMove={handleWallPointerMove}
             />
-            <WallFigure x={wallSvg.x} y={wallSvg.y} count={wall.count} scale={wallScale} />
+            <WallFigure x={wallSvg.x} y={wallSvg.y} count={wall.count} scale={playerScale} />
           </>
         )}
 
