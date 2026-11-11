@@ -1728,6 +1728,9 @@ export function App() {
                   ? `${activePlayer?.name ?? "Игрок"}, сначала прочитай расстановку. Мяч появится через мгновение.`
                   : `${activePlayer?.name ?? "Игрок"}, выбери позицию до удара.`}
             </p>
+            {shownFeedback && result?.evaluation.openShotTarget && (
+              <p className="session-summary-note">Это один из возможных ударов, а не точный прогноз.</p>
+            )}
             {result && analysisRevealed && level.exitDecision && exitChoice && exitChoice !== level.exitDecision && (
               <p className="decision-note">
                 {level.exitDecision === "go"

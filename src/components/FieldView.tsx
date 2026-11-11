@@ -745,8 +745,8 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
           shotProgress >= 1 &&
           (() => {
             // Надпись живет под воротами, за пределами поля - там она ничего не закрывает.
-            const labelText = shotOutcome.isGoal ? "Гол в открытый угол" : "Сейв!";
-            const labelWidth = labelText.length * 2.05 + 6;
+            const labelText = shotOutcome.isGoal ? "мяч в открытый угол" : "сейв";
+            const labelWidth = Math.max("Пример удара:".length, labelText.length) * 2.05 + 6;
             const labelX = Math.min(
               Math.max(goalSvgX + goalSvgWidth / 2, focusLeft + labelWidth / 2 + 1),
               focusLeft + focusWidth - labelWidth / 2 - 1
@@ -755,9 +755,10 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
 
             return (
               <g className={`shot-label-group ${shotOutcome.isGoal ? "goal" : "save"}`}>
-                <rect x={labelX - labelWidth / 2} y={labelY - 4.2} width={labelWidth} height={6.2} rx="1.8" />
-                <text x={labelX} y={labelY} textAnchor="middle">
-                  {labelText}
+                <rect x={labelX - labelWidth / 2} y={labelY - 5.8} width={labelWidth} height={9.6} rx="1.8" />
+                <text x={labelX} y={labelY - 2} textAnchor="middle">
+                  <tspan x={labelX}>Пример удара:</tspan>
+                  <tspan x={labelX} dy="3.7">{labelText}</tspan>
                 </text>
               </g>
             );
