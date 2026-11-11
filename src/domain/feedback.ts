@@ -105,6 +105,7 @@ const summaryByErrorType: Record<FeedbackErrorType, string> = {
   TOO_LATE_REACTION: "Время вышло. Вратарь должен успеть занять позицию и остановиться до удара.",
   WRONG_BALL_OWNER: "Ты среагировал не на активного игрока с мячом. Сначала найди мяч, потом выбирай позицию.",
   WRONG_BODY_ANGLE: "Позиция ног почти подходит, но корпус нужно повернуть к мячу.",
+  WRONG_EXIT_DECISION: "Посмотри ещё раз на подачу и выбери решение.",
   IGNORED_DEFENDER: "Защитник уже мешает игроку с мячом, поэтому выходить так далеко рискованно.",
   WRONG_POSITION: "Позиция выбрана неудачно. Нужно вернуться к линии мяча и защитить ворота.",
   ALMOST: "Ты выбрал почти правильную зону. Осталось чуть точнее выбрать позицию."
@@ -128,6 +129,7 @@ const adviceByErrorType: Record<FeedbackErrorType, string> = {
   TOO_LATE_REACTION: "Решай быстрее: найди мяч, сместись на линию и остановись.",
   WRONG_BALL_OWNER: "Сначала найди игрока с мячом, а игроков без мяча держи в поле зрения.",
   WRONG_BODY_ANGLE: "Оставь позицию ног и поверни корпус к мячу.",
+  WRONG_EXIT_DECISION: "Обрати внимание на траекторию и игроков рядом.",
   IGNORED_DEFENDER: "Учти помощь защитника и не выбегай без причины.",
   ALMOST: "Сделай маленькую поправку и останься в игровой зоне.",
   WRONG_POSITION: "Найди мяч, центр ворот и вернись на линию удара."
@@ -439,7 +441,7 @@ function buildVisualHints(result: CheckResult, level: Level, criteria: Criterion
   const isAerialSetPiece = result.evaluation.scenarioType === "corner" || result.evaluation.scenarioType === "high_cross";
   const hints = new Set<VisualHint>(isAerialSetPiece ? ["CURRENT_BALL_POINT", "CORRECT_ZONE", "ALMOST_ZONE", "CROSS_TRAJECTORY"] : ["BALL_TO_GOAL_LINE", "CURRENT_BALL_POINT", "CORRECT_ZONE", "ALMOST_ZONE"]);
 
-  if (result.result !== "correct") {
+  if (result.result !== "correct" && error !== "WRONG_EXIT_DECISION") {
     hints.add("MOVE_ARROW");
   }
 
@@ -616,6 +618,15 @@ export function buildFeedback(result: CheckResult, level: Level): FeedbackResult
     },
     visualHints: buildVisualHints(result, level, criteria)
   };
+
+  if (error === "WRONG_EXIT_DECISION") {
+    const advice = level.exitDecision === "go"
+      ? "Подача чистая: выбери «Выйду на мяч»."
+      : "Подача спорная: выбери «Останусь в воротах».";
+    feedback.summary = "Позиция ног подходит, но решение на подаче нужно изменить.";
+    feedback.mainAdvice = advice;
+    feedback.details = { why: level.exitDecision === "go" ? "В этом эпизоде траектория чистая и можно выйти на мяч." : "В этом эпизоде выход в скопление игроков рискован.", howToFix: advice };
+  }
 
   validateFeedback(feedback);
   return feedback;

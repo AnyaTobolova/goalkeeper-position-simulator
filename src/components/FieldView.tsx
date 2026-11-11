@@ -208,6 +208,7 @@ function WallFigure({ x, y, count, scale }: { x: number; y: number; count: numbe
 export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, showDimensions, visualHints, showOpenGoal, hideBall = false, wall, onGoalkeeperChange, onGoalkeeperFacingChange, onWallChange }: FieldViewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const shotAngleClipId = useRef(`shot-angle-clip-${Math.random().toString(36).slice(2)}`).current;
+  const wallDistanceMaskId = useRef(`wall-distance-mask-${Math.random().toString(36).slice(2)}`).current;
   const compactField = useCompactField();
   const fieldHeight = Math.max(64, (pitch.fieldLength / pitch.fieldWidth) * viewBoxWidth);
   const scaleX = viewBoxWidth / pitch.fieldWidth;
@@ -533,6 +534,10 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
           <clipPath id={shotAngleClipId} clipPathUnits="userSpaceOnUse">
             <polygon points={`${ball.x},${ball.y} ${leftSvg.x},${leftSvg.y} ${rightSvg.x},${rightSvg.y}`} />
           </clipPath>
+          <mask id={wallDistanceMaskId} maskUnits="userSpaceOnUse" x="0" y="0" width={viewBoxWidth} height={fieldHeight}>
+            <rect x="0" y="0" width={viewBoxWidth} height={fieldHeight} fill="white" />
+            <ellipse cx={ball.x} cy={ball.y} rx={(pitch.markings.penaltyArcRadius ?? 9.15) * scaleX} ry={(pitch.markings.penaltyArcRadius ?? 9.15) * scaleY} fill="black" />
+          </mask>
         </defs>
 
         <rect x="0" y="0" width={viewBoxWidth} height={fieldHeight} rx="1" fill="url(#grass)" />
@@ -658,7 +663,7 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
                 y2={percentToSvg(level.ball).y}
               />
             )}
-            {hasHint("WALL_COVERAGE") && wallRect && <rect className="wall-target-zone" {...wallRect} />}
+            {hasHint("WALL_COVERAGE") && wallRect && <rect className="wall-target-zone" {...wallRect} mask={`url(#${wallDistanceMaskId})`} />}
           </>
         )}
 

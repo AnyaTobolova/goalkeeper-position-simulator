@@ -139,6 +139,35 @@ describe("угловые: единая школа стойки", () => {
 });
 
 describe("штрафные", () => {
+  it("штрафные в стандартных форматах располагаются за штрафной площадью даже при повторах", () => {
+    for (const pitch of Object.values(pitchPresets).filter((item) => item.presetId !== "custom")) {
+      for (const initialLevel of levels.filter((item) => item.freeKick)) {
+        for (const attempt of [0, 1, 2, 3, 4, 5, 6, 7, 8]) {
+          const level = applyLevelVariation(initialLevel, attempt);
+          const ball = toMeters(level.ball, pitch);
+          expect(ball.y).toBeGreaterThan(pitch.markings.penaltyAreaDepth ?? 0);
+          const zone = freeKickWallZone(ball, pitch);
+          const center = toMeters({ x: (zone.xMin + zone.xMax) / 2, y: (zone.yMin + zone.yMax) / 2 }, pitch);
+          expect(Math.hypot(center.x - ball.x, center.y - ball.y)).toBeGreaterThanOrEqual((pitch.markings.penaltyArcRadius ?? 9.15) - 0.01);
+        }
+      }
+    }
+  });
+
+  it("не считает пустую стенку препятствием для обзора", () => {
+    const level = levelById("free-kick-center");
+    const evaluation = evaluateGoalkeeper({ x: 50, y: 1 }, level, pitch7, undefined, { x: 50, y: 10, count: 0 });
+    expect(evaluation.mainErrorType).not.toBe("NO_BALL_VISIBILITY");
+    expect(evaluation.notes).not.toContain("Вратарь спрятался за стенкой и плохо видит мяч.");
+  });
+
+  it("не засчитывает стенку слишком близко к мячу", () => {
+    const level = levelById("free-kick-center");
+    const point = idealPercent(level, pitch7);
+    const result = checkAnswer(point, level, pitch7, undefined, { x: 50, y: level.ball.y - 1, count: level.freeKick!.recommendedWallCount });
+    expect(result.result).not.toBe("correct");
+    expect(result.evaluation.notes).toContain("Стенка слишком близко к мячу.");
+  });
   it("вратарь отвечает за открытую часть ворот, а не за сторону стенки", () => {
     const level = levelById("free-kick-right-edge");
     const zones = buildPositionZones(level, pitch7);

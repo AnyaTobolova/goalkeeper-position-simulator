@@ -629,10 +629,10 @@ const extraLevels: Level[] = [
     title: "Штрафной справа",
     category: "free_kick",
     difficulty: 4,
-    ball: { x: 66, y: 21 },
+    ball: { x: 66, y: 25 },
     players: [
-      { id: "a1", role: "attacker", x: 66, y: 21, hasBall: true },
-      { id: "a2", role: "attacker", x: 71, y: 23 }
+      { id: "a1", role: "attacker", x: 66, y: 25, hasBall: true },
+      { id: "a2", role: "attacker", x: 71, y: 27 }
     ],
     initialGoalkeeper: { x: 50, y: 0 },
     initialGoalkeeperFacing: 180,
@@ -654,10 +654,10 @@ const extraLevels: Level[] = [
     title: "Штрафной слева",
     category: "free_kick",
     difficulty: 4,
-    ball: { x: 34, y: 21 },
+    ball: { x: 34, y: 25 },
     players: [
-      { id: "a1", role: "attacker", x: 34, y: 21, hasBall: true },
-      { id: "a2", role: "attacker", x: 29, y: 23 }
+      { id: "a1", role: "attacker", x: 34, y: 25, hasBall: true },
+      { id: "a2", role: "attacker", x: 29, y: 27 }
     ],
     initialGoalkeeper: { x: 50, y: 0 },
     initialGoalkeeperFacing: 180,
@@ -679,11 +679,11 @@ const extraLevels: Level[] = [
     title: "Штрафной по центру",
     category: "free_kick",
     difficulty: 5,
-    ball: { x: 50, y: 24 },
+    ball: { x: 50, y: 25 },
     players: [
-      { id: "a1", role: "attacker", x: 50, y: 24, hasBall: true },
-      { id: "a2", role: "attacker", x: 45, y: 23 },
-      { id: "a3", role: "attacker", x: 55, y: 23 }
+      { id: "a1", role: "attacker", x: 50, y: 25, hasBall: true },
+      { id: "a2", role: "attacker", x: 45, y: 24 },
+      { id: "a3", role: "attacker", x: 55, y: 24 }
     ],
     initialGoalkeeper: { x: 50, y: 0 },
     initialGoalkeeperFacing: 210,
@@ -925,11 +925,11 @@ const extraLevels: Level[] = [
     title: "Близкий штрафной по центру",
     category: "free_kick",
     difficulty: 5,
-    ball: { x: 50, y: 15 },
+    ball: { x: 50, y: 25 },
     players: [
-      { id: "a1", role: "attacker", x: 50, y: 15, hasBall: true },
-      { id: "a2", role: "attacker", x: 45, y: 16 },
-      { id: "a3", role: "attacker", x: 55, y: 16 }
+      { id: "a1", role: "attacker", x: 50, y: 25, hasBall: true },
+      { id: "a2", role: "attacker", x: 45, y: 26 },
+      { id: "a3", role: "attacker", x: 55, y: 26 }
     ],
     initialGoalkeeper: { x: 50, y: 0 },
     goalTarget: { side: -0.3, depth: 1.6 },
@@ -950,10 +950,10 @@ const extraLevels: Level[] = [
     title: "Очень боковой штрафной справа",
     category: "free_kick",
     difficulty: 4,
-    ball: { x: 82, y: 16 },
+    ball: { x: 82, y: 25 },
     players: [
-      { id: "a1", role: "attacker", x: 82, y: 16, hasBall: true },
-      { id: "a2", role: "attacker", x: 74, y: 18 }
+      { id: "a1", role: "attacker", x: 82, y: 25, hasBall: true },
+      { id: "a2", role: "attacker", x: 74, y: 27 }
     ],
     initialGoalkeeper: { x: 50, y: 0 },
     goalTarget: { side: -0.2, depth: 2 },
@@ -974,11 +974,11 @@ const extraLevels: Level[] = [
     title: "Штрафной с розыгрышем",
     category: "free_kick",
     difficulty: 5,
-    ball: { x: 42, y: 22 },
+    ball: { x: 42, y: 25 },
     players: [
-      { id: "a1", role: "attacker", x: 42, y: 22, hasBall: true },
-      { id: "a2", role: "attacker", x: 55, y: 18 },
-      { id: "a3", role: "attacker", x: 62, y: 13 }
+      { id: "a1", role: "attacker", x: 42, y: 25, hasBall: true },
+      { id: "a2", role: "attacker", x: 55, y: 21 },
+      { id: "a3", role: "attacker", x: 62, y: 16 }
     ],
     initialGoalkeeper: { x: 50, y: 0 },
     goalTarget: { side: 0.5, depth: 2.4 },
@@ -999,10 +999,10 @@ const extraLevels: Level[] = [
     title: "Штрафной с компактной стенкой",
     category: "free_kick",
     difficulty: 4,
-    ball: { x: 58, y: 18 },
+    ball: { x: 58, y: 25 },
     players: [
-      { id: "a1", role: "attacker", x: 58, y: 18, hasBall: true },
-      { id: "a2", role: "attacker", x: 63, y: 18 }
+      { id: "a1", role: "attacker", x: 58, y: 25, hasBall: true },
+      { id: "a2", role: "attacker", x: 63, y: 25 }
     ],
     initialGoalkeeper: { x: 50, y: 0 },
     goalTarget: { side: -0.45, depth: 1.8 },

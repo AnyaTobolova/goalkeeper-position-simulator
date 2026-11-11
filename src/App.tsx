@@ -5,6 +5,7 @@ import { PlayerPanel } from "./components/PlayerPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { StatsPanel } from "./components/StatsPanel";
 import { checkAnswer, resolveTimeoutResult } from "./domain/evaluate";
+import { applyExitDecision } from "./domain/exitDecision";
 import { applyLevelVariation, mirrorLevel } from "./domain/variation";
 import { RulesQuiz } from "./components/RulesQuiz";
 import { PenaltyShootout } from "./components/PenaltyShootout";
@@ -56,7 +57,7 @@ const onboardingCards = [
 
 const contextualHintTexts = {
   analysis: "Зелёная зона — лучшая, оранжевая — допустимо. Голубая стрелка — куда переставить ноги.",
-  free_kick: "Выбери число игроков в стенке и перетащи её в подсвеченную зону — но вратарь должен видеть мяч.",
+  free_kick: "Выбери число игроков и перетащи стенку. Поставь вратаря так, чтобы он видел мяч.",
   cross: "Сначала реши: выйти на мяч или остаться в воротах.",
   penalty: "До удара держи часть ноги на линии ворот."
 } as const;
@@ -346,6 +347,8 @@ function errorLabel(errorType?: ErrorType) {
       return "застревает у штанги после передачи";
     case "WRONG_BODY_ANGLE":
       return "корпус не повернут к мячу";
+    case "WRONG_EXIT_DECISION":
+      return "решение на подаче стоит потренировать";
     case "NO_BALL_VISIBILITY":
       return "теряет обзор мяча за стенкой";
     case "WALL_COUNT_WRONG":
@@ -1280,27 +1283,8 @@ export function App() {
     }
 
     const checked = checkAnswer(goalkeeper, level, activePitch, goalkeeperFacing, level.freeKick ? wall : undefined);
-    let finalResult = reason === "timeout" ? resolveTimeoutResult(checked, goalkeeper, startGoalkeeperForLevel(level, levelIndex)) : checked;
-
-    // Решение на подаче важнее точки ног: неверный выбор не может дать «Отлично».
-    if (level.exitDecision && exitChoice && exitChoice !== level.exitDecision) {
-      const decisionText =
-        level.exitDecision === "go"
-          ? "Подача чистая и летит во вратарскую - здесь вратарь должен выходить на мяч, а не ждать на линии."
-          : "В этой подаче выход рискованный: сначала контроль ворот, выходить можно только на чистый мяч.";
-
-      finalResult = {
-        ...finalResult,
-        result: finalResult.result === "dangerous" ? "dangerous" : "wrong",
-        score: Math.min(finalResult.score, 55),
-        text: decisionText,
-        repeat: true,
-        evaluation: {
-          ...finalResult.evaluation,
-          notes: [...finalResult.evaluation.notes, "Решение на подаче выбрано неверно."]
-        }
-      };
-    }
+    const timedResult = reason === "timeout" ? resolveTimeoutResult(checked, goalkeeper, startGoalkeeperForLevel(level, levelIndex)) : checked;
+    const finalResult = applyExitDecision(timedResult, level, exitChoice);
     const nextProgress = updateProgress(progress, level, finalResult);
     const earnedBadges = newlyEarnedBadges(computeBadges(progress, levels, penaltyBest), computeBadges(nextProgress, levels, penaltyBest));
 
@@ -1757,6 +1741,9 @@ export function App() {
                 <span>Оранжевым показана примерно открытая часть ворот с учётом вратаря и стенки.</span>
                 <span>Это схема по земле: высота удара не учитывается.</span>
               </div>
+            )}
+            {shownFeedback && result?.evaluation.notes.includes("Стенка слишком близко к мячу.") && (
+              <p className="decision-note">Стенка слишком близко к мячу. Отодвинь её на нужное расстояние.</p>
             )}
             {shownFeedback && result && (
               <>

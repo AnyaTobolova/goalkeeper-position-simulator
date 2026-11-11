@@ -73,7 +73,7 @@ export function freeKickWallZone(ballMeters: Point, pitch: PitchConfig): Zone {
   const toPost = { x: nearPostPoint.x - ballMeters.x, y: nearPostPoint.y - ballMeters.y };
   const len = Math.max(0.1, Math.hypot(toPost.x, toPost.y));
   const legalDistance = pitch.markings.penaltyArcRadius ?? 9.15;
-  const wallDistance = Math.min(legalDistance, len * 0.7);
+  const wallDistance = legalDistance;
   const wallCenter = {
     x: ballMeters.x + (toPost.x / len) * wallDistance,
     y: ballMeters.y + (toPost.y / len) * wallDistance
@@ -262,7 +262,9 @@ export function evaluateGoalkeeper(
     const wallDistance = distance(toMeters(selectedWall, pitch), toMeters(targetWallCenter, pitch));
     const wallInZone = isInsideZone(selectedWall, targetWallZone);
     const wallBetweenBallAndKeeper = selectedWallPoint.y > goalkeeper.y && selectedWallPoint.y < ball.y;
-    const hiddenBehindWall = wallBetweenBallAndKeeper && distancePointToLine(goalkeeper, selectedWallPoint, ball) < Math.max(0.55, pitch.goalWidth * 0.14);
+    const hiddenBehindWall = selectedWall.count > 0 && wallBetweenBallAndKeeper && distancePointToLine(goalkeeper, selectedWallPoint, ball) < Math.max(0.55, pitch.goalWidth * 0.14);
+    const legalDistance = pitch.markings.penaltyArcRadius ?? 9.15;
+    const wallTooClose = selectedWall.count > 0 && distance(selectedWallPoint, ball) < legalDistance - 0.01;
 
     wallCountScore = countDiff === 0 ? 100 : countDiff === 1 ? 62 : countDiff === 2 ? 28 : 0;
     wallPositionScore = wallInZone ? 100 : scoreByDistance(wallDistance, Math.max(0.65, pitch.goalWidth * 0.12), Math.max(4, pitch.goalWidth * 0.8));
@@ -275,6 +277,12 @@ export function evaluateGoalkeeper(
     if (wallPositionScore < 80) {
       mainErrorType = mainErrorType ?? "WALL_POSITION_WRONG";
       notes.push("Стенка не закрывает ближний угол.");
+    }
+
+    if (wallTooClose) {
+      mainErrorType = mainErrorType ?? "WALL_POSITION_WRONG";
+      wallPositionScore = Math.min(wallPositionScore, 55);
+      notes.push("Стенка слишком близко к мячу.");
     }
 
     if (hiddenBehindWall) {
