@@ -146,7 +146,7 @@ const reinforceByScenarioType: Record<ScenarioType, string> = {
   high_cross: "Запомни правило: сначала прочитай траекторию, потом решай - выходить или держать ворота.",
   corner: "Запомни правило: при угловом важно видеть мяч, игроков и не провалиться в ворота.",
   free_kick: "Запомни правило: стенка закрывает одну часть, ты отвечаешь за открытую и должен видеть мяч.",
-  penalty: "Запомни правило пенальти: до удара хотя бы часть одной ноги остается на линии ворот.",
+  penalty: "Перед ударом стой на линии ворот. В момент удара часть ноги может быть на линии, над ней или за ней.",
   defender_pressure: "Запомни правило: если защитник помогает, держи позицию и не выбегай без причины.",
   sweeper_position: "Запомни правило: когда мяч далеко, можно стоять выше, но не терять ворота за спиной.",
   reaction_to_ball_owner: "Запомни правило: сначала найди активный мяч, потом займи линию мяча и остановись до удара."
@@ -558,7 +558,7 @@ function movementAdvice(result: CheckResult) {
 function summaryForResult(result: CheckResult, error?: FeedbackErrorType) {
   // Пенальти: выход с линии - нарушение правила игры, а не просто ошибка глубины.
   if (result.evaluation.scenarioType === "penalty" && (error === "TOO_HIGH" || error === "RUSHED_1V1")) {
-    return "По правилам пенальти до удара хотя бы часть одной ноги должна оставаться на линии ворот. Если выйти раньше, удар могут заставить перебить.";
+    return "Перед ударом стой на линии ворот. В момент удара часть ноги должна быть на линии, над ней или за ней. В игре поставь белую точку на линию.";
   }
 
   if (error === "TOO_LATE_REACTION" || error === "WRONG_BALL_OWNER") {
@@ -581,7 +581,7 @@ function summaryForResult(result: CheckResult, error?: FeedbackErrorType) {
 
 function adviceForResult(result: CheckResult, error?: FeedbackErrorType) {
   if (result.evaluation.scenarioType === "penalty" && (error === "TOO_HIGH" || error === "RUSHED_1V1")) {
-    return "Вернись на линию ворот: при пенальти правило разрешает покинуть ее только после удара.";
+    return "Верни белую точку ног на линию ворот и дождись удара.";
   }
 
   if (error === "TOO_LATE_REACTION" || error === "WRONG_BALL_OWNER") {

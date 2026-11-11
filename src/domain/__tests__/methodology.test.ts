@@ -92,6 +92,16 @@ describe("глубина зависит от размера ворот", () => {
 });
 
 describe("угловые: единая школа стойки", () => {
+  it("мяч находится в угловом секторе для всех форматов поля", () => {
+    for (const level of levels.filter((item) => item.category === "corner")) {
+      for (const pitch of Object.values(pitchPresets)) {
+        const effectivePitch = level.pitchPresetOverride ? pitchPresets[level.pitchPresetOverride] : pitch;
+        const ball = toMeters(level.ball, effectivePitch);
+        const distanceToCorner = Math.hypot(Math.min(ball.x, effectivePitch.fieldWidth - ball.x), ball.y);
+        expect(distanceToCorner).toBeLessThanOrEqual(effectivePitch.presetId === "futsal" ? 0.25 : 1);
+      }
+    }
+  });
   it("при угловом справа целевая стойка между серединой ворот и дальней штангой", () => {
     const level = levelById("corner-right-near-post");
     const zones = buildPositionZones(level, pitch7);
@@ -158,10 +168,20 @@ describe("штрафные", () => {
 describe("пенальти: правило линии ворот", () => {
   it("вратарь на линии по центру получает «Отлично»", () => {
     const level = levelById("penalty-center");
-    const onLine = fromMeters({ x: goalCenter(pitch7).x, y: 0.3 }, pitch7);
+    const onLine = fromMeters({ x: goalCenter(pitch7).x, y: 0 }, pitch7);
     const result = checkAnswer(onLine, level, pitch7);
 
     expect(result.result).toBe("correct");
+  });
+
+  it("не засчитывает выход вперёд на 30 и 79 сантиметров", () => {
+    const level = levelById("penalty-center");
+    for (const depth of [0.3, 0.79]) {
+      const offLine = fromMeters({ x: goalCenter(pitch7).x, y: depth }, pitch7);
+      const result = checkAnswer(offLine, level, pitch7);
+      expect(result.result).not.toBe("correct");
+      expect(result.errorType).toBe("TOO_HIGH");
+    }
   });
 
   it("выход с линии до удара - опасная ошибка", () => {

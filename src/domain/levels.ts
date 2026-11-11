@@ -587,9 +587,9 @@ const extraLevels: Level[] = [
     title: "Угловой справа",
     category: "corner",
     difficulty: 5,
-    ball: { x: 94, y: 2 },
+    ball: { x: 99.5, y: 0.5 },
     players: [
-      { id: "a1", role: "attacker", x: 94, y: 3, hasBall: true },
+      { id: "a1", role: "attacker", x: 99, y: 1, hasBall: true },
       { id: "a2", role: "attacker", x: 58, y: 10 },
       { id: "d1", role: "defender", x: 53, y: 8 }
     ],
@@ -608,9 +608,9 @@ const extraLevels: Level[] = [
     title: "Угловой слева",
     category: "corner",
     difficulty: 5,
-    ball: { x: 6, y: 2 },
+    ball: { x: 0.5, y: 0.5 },
     players: [
-      { id: "a1", role: "attacker", x: 6, y: 3, hasBall: true },
+      { id: "a1", role: "attacker", x: 1, y: 1, hasBall: true },
       { id: "a2", role: "attacker", x: 42, y: 10 },
       { id: "d1", role: "defender", x: 47, y: 8 }
     ],
@@ -843,9 +843,9 @@ const extraLevels: Level[] = [
     title: "Угловой справа: открытое поле",
     category: "corner",
     difficulty: 5,
-    ball: { x: 94, y: 2 },
+    ball: { x: 99.5, y: 0.5 },
     players: [
-      { id: "a1", role: "attacker", x: 94, y: 3, hasBall: true },
+      { id: "a1", role: "attacker", x: 99, y: 1, hasBall: true },
       { id: "a2", role: "attacker", x: 54, y: 8 },
       { id: "d1", role: "defender", x: 50, y: 8 }
     ],
@@ -864,9 +864,9 @@ const extraLevels: Level[] = [
     title: "Угловой слева: открытое поле",
     category: "corner",
     difficulty: 5,
-    ball: { x: 6, y: 2 },
+    ball: { x: 0.5, y: 0.5 },
     players: [
-      { id: "a1", role: "attacker", x: 6, y: 3, hasBall: true },
+      { id: "a1", role: "attacker", x: 1, y: 1, hasBall: true },
       { id: "a2", role: "attacker", x: 46, y: 8 },
       { id: "d1", role: "defender", x: 50, y: 8 }
     ],
@@ -885,9 +885,9 @@ const extraLevels: Level[] = [
     title: "Угловой справа: зал",
     category: "corner",
     difficulty: 4,
-    ball: { x: 94, y: 2 },
+    ball: { x: 99.5, y: 0.5 },
     players: [
-      { id: "a1", role: "attacker", x: 94, y: 3, hasBall: true },
+      { id: "a1", role: "attacker", x: 99, y: 1, hasBall: true },
       { id: "a2", role: "attacker", x: 58, y: 8 }
     ],
     initialGoalkeeper: { x: 56, y: 0 },
@@ -906,9 +906,9 @@ const extraLevels: Level[] = [
     title: "Угловой слева: зал",
     category: "corner",
     difficulty: 4,
-    ball: { x: 6, y: 2 },
+    ball: { x: 0.5, y: 0.5 },
     players: [
-      { id: "a1", role: "attacker", x: 6, y: 3, hasBall: true },
+      { id: "a1", role: "attacker", x: 1, y: 1, hasBall: true },
       { id: "a2", role: "attacker", x: 42, y: 8 }
     ],
     initialGoalkeeper: { x: 44, y: 0 },
@@ -1138,11 +1138,11 @@ const extraLevels: Level[] = [
     ball: { x: 50, y: 15 },
     players: [{ id: "a1", role: "attacker", x: 50, y: 19, hasBall: true }],
     initialGoalkeeper: { x: 50, y: 6 },
-    goalTarget: { side: 0, depth: 0.35 },
+    goalTarget: { side: 0, depth: 0 },
     mainErrorType: "TOO_HIGH",
     successText: "Отлично: ты по центру и на линии ворот, как требуют правила, и готов оттолкнуться в любой угол.",
     almostText: "Почти: держись середины ворот и оставайся на линии до самого удара.",
-    errorText: "Разберем: по правилам до удара хотя бы часть одной ноги должна оставаться на линии ворот. Если выйти раньше, пенальти могут заставить перебить.",
+    errorText: "Разберем: перед ударом стой на линии ворот. В момент удара часть ноги должна быть на линии, над ней или за ней.",
     hintText: "Правило пенальти: до удара оставайся на линии ворот. Встань по центру и держи корпус к мячу.",
     evaluationMode: "hybrid",
     explanationLayers: layers

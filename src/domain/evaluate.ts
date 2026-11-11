@@ -366,6 +366,20 @@ export function resolveTimeoutResult(checked: CheckResult, goalkeeper: Point, st
 
 export function checkAnswer(goalkeeper: Point, level: Level, pitch: PitchConfig, goalkeeperFacing?: number, wall?: WallConfig): CheckResult {
   const evaluation = evaluateGoalkeeper(goalkeeper, level, pitch, goalkeeperFacing, wall);
+  // Белая точка обозначает положение ног. Небольшой допуск нужен для
+  // перетаскивания, но заметный выход вперёд до удара недопустим.
+  const penaltyForwardMeters = toMeters(goalkeeper, pitch).y;
+  if (evaluation.scenarioType === "penalty" && penaltyForwardMeters > 0.12) {
+    const dangerous = penaltyForwardMeters > 0.5;
+    return {
+      result: dangerous ? "dangerous" : "wrong",
+      score: Math.min(evaluation.total, dangerous ? 35 : 60),
+      text: level.errorText,
+      repeat: true,
+      errorType: "TOO_HIGH",
+      evaluation: { ...evaluation, mainErrorType: "TOO_HIGH" }
+    };
+  }
   const positionZones = buildPositionZones(level, pitch);
   const localPosition = toLocal(toMeters(goalkeeper, pitch), positionZones.center, positionZones.axes);
   const zoneClassification = classifyLocalPosition(localPosition, positionZones.cfg, !evaluation.outsideShotAngle);

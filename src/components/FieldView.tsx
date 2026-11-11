@@ -39,17 +39,17 @@ function formatMeters(value: number) {
   return `${Math.round(value * 10) / 10} м`;
 }
 
-function ZoneCapsule({ zone, className, fieldHeight }: { zone: OrientedZone; className: string; fieldHeight: number }) {
+function ZoneCapsule({ zone, className, fieldHeight, exactDepth = false }: { zone: OrientedZone; className: string; fieldHeight: number; exactDepth?: boolean }) {
   const center = {
     x: zone.center.x,
     y: yToSvg(zone.center.y) * (fieldHeight / 100)
   };
-  const depthHalf = Math.max(1.2, zone.depthHalf * (fieldHeight / 100));
-  const sideHalf = Math.max(0.9, zone.sideHalf);
+  const depthHalf = exactDepth ? zone.depthHalf * (fieldHeight / 100) : Math.max(1.2, zone.depthHalf * (fieldHeight / 100));
+  const sideHalf = exactDepth ? zone.sideHalf : Math.max(0.9, zone.sideHalf);
 
   return (
     <g transform={`translate(${center.x} ${center.y}) rotate(${zone.angle})`}>
-      <rect className={className} x={-sideHalf} y={-depthHalf} width={sideHalf * 2} height={depthHalf * 2} rx={sideHalf} ry={sideHalf} />
+      <rect className={className} x={-sideHalf} y={-depthHalf} width={sideHalf * 2} height={depthHalf * 2} rx={exactDepth ? 0 : sideHalf} ry={exactDepth ? 0 : sideHalf} />
     </g>
   );
 }
@@ -393,9 +393,18 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
     return normalizeAngle((Math.atan2(converted.x - keeperSvg.x, keeperSvg.y - converted.y) * 180) / Math.PI);
   }
 
+  function goalkeeperPointerPosition(clientX: number, clientY: number) {
+    const point = pointerToPercent(clientX, clientY);
+    // При пенальти помогаем пальцем поставить точку точно на линию.
+    if (level.category === "penalty" && Math.abs(point.y * pitch.fieldLength / 100) <= 0.3) {
+      return { ...point, y: 0 };
+    }
+    return point;
+  }
+
   function handlePointerDown(event: React.PointerEvent<SVGCircleElement>) {
     event.currentTarget.setPointerCapture(event.pointerId);
-    onGoalkeeperChange(pointerToPercent(event.clientX, event.clientY));
+    onGoalkeeperChange(goalkeeperPointerPosition(event.clientX, event.clientY));
   }
 
   function handlePointerMove(event: React.PointerEvent<SVGCircleElement>) {
@@ -403,7 +412,7 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
       return;
     }
 
-    onGoalkeeperChange(pointerToPercent(event.clientX, event.clientY));
+    onGoalkeeperChange(goalkeeperPointerPosition(event.clientX, event.clientY));
   }
 
   function handleRotatePointerDown(event: React.PointerEvent<SVGElement>) {
@@ -625,8 +634,8 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
             <g clipPath={showShotAngle ? `url(#${shotAngleClipId})` : undefined}>
               {hasHint("TOO_DEEP_ZONE") && tooDeepZone && <ZoneCapsule zone={tooDeepZone} className={`danger-zone ${dangerZone === tooDeepZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
               {hasHint("TOO_HIGH_ZONE") && tooHighZone && <ZoneCapsule zone={tooHighZone} className={`danger-zone ${dangerZone === tooHighZone ? "active" : ""}`} fieldHeight={fieldHeight} />}
-              {hasHint("ALMOST_ZONE") && almostZone && <ZoneCapsule zone={almostZone} className="almost-zone" fieldHeight={fieldHeight} />}
-              {hasHint("CORRECT_ZONE") && optimalSvg && correctZone && <ZoneCapsule zone={correctZone} className="correct-zone" fieldHeight={fieldHeight} />}
+              {hasHint("ALMOST_ZONE") && almostZone && <ZoneCapsule zone={almostZone} className="almost-zone" fieldHeight={fieldHeight} exactDepth={level.category === "penalty"} />}
+              {hasHint("CORRECT_ZONE") && optimalSvg && correctZone && <ZoneCapsule zone={correctZone} className="correct-zone" fieldHeight={fieldHeight} exactDepth={level.category === "penalty"} />}
             </g>
             {hasHint("MOVE_ARROW") && optimalSvg && (
               <>

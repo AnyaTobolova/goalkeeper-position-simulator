@@ -135,11 +135,11 @@ export const zoneConfigs = {
     sideSlack: 1.5
   },
   penalty: {
-    idealDepth: 0.35,
-    correctDepthHalf: 0.45,
+    idealDepth: 0,
+    correctDepthHalf: 0.12,
     correctSideHalf: 0.8,
-    backSlack: 0.5,
-    forwardSlack: 0.7,
+    backSlack: 0.12,
+    forwardSlack: 0.12,
     sideSlack: 1.2
   },
   conservative: {
