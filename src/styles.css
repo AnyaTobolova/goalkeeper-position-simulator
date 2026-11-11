@@ -3515,3 +3515,10 @@ input:focus {
   border: 1px solid #e4bc44;
   border-radius: 10px;
 }
+
+.open-goal-segment {
+  stroke: #ff9944;
+  stroke-width: 1.6;
+  stroke-linecap: butt;
+  pointer-events: none;
+}

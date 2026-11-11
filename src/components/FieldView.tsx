@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CheckResult, Level, OrientedZone, PitchConfig, Point, VisualHint, WallConfig, Zone } from "../domain/types";
 import { fromMeters, goalCenter, leftPost, rightPost, toMeters } from "../domain/geometry";
+import { openGoalSegments, openGoalSegmentsWithWall } from "../domain/openGoalSegments";
 
 type FieldViewProps = {
   pitch: PitchConfig;
@@ -10,6 +11,7 @@ type FieldViewProps = {
   result: CheckResult | null;
   showDimensions: boolean;
   visualHints: VisualHint[];
+  showOpenGoal: boolean;
   hideBall?: boolean;
   wall?: WallConfig;
   onGoalkeeperChange: (point: Point) => void;
@@ -203,7 +205,7 @@ function WallFigure({ x, y, count, scale }: { x: number; y: number; count: numbe
   );
 }
 
-export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, showDimensions, visualHints, hideBall = false, wall, onGoalkeeperChange, onGoalkeeperFacingChange, onWallChange }: FieldViewProps) {
+export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, showDimensions, visualHints, showOpenGoal, hideBall = false, wall, onGoalkeeperChange, onGoalkeeperFacingChange, onWallChange }: FieldViewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const shotAngleClipId = useRef(`shot-angle-clip-${Math.random().toString(36).slice(2)}`).current;
   const compactField = useCompactField();
@@ -231,6 +233,13 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
   const wallRect = result?.evaluation.wallZone ? zoneToRect(result.evaluation.wallZone, fieldHeight) : null;
   const hasHint = (hint: VisualHint) => visualHints.includes(hint);
   const showShotAngle = result && hasHint("BALL_TO_GOAL_LINE");
+  const openSegments = showOpenGoal && result
+    ? level.freeKick && wall
+      ? openGoalSegmentsWithWall(meterBall, toMeters(goalkeeper, pitch), pitch, { ...toMeters(wall, pitch), count: wall.count })
+      : result.evaluation.openGoalPercent !== undefined
+        ? openGoalSegments(meterBall, toMeters(goalkeeper, pitch), pitch)
+        : []
+    : [];
   // Удар с исходом: после оценки мяч летит в самую открытую часть ворот (гол)
   // или во вратаря (сейв). Только для сценариев с прямым ударом.
   const [shotProgress, setShotProgress] = useState(0);
@@ -595,6 +604,10 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
           <circle className="goal-post-cap" cx={goalSvgX} cy={fieldHeight} r="0.72" />
           <circle className="goal-post-cap" cx={goalSvgX + goalSvgWidth} cy={fieldHeight} r="0.72" />
         </g>
+
+        {openSegments.map(([start, end], index) => (
+          <line key={index} className="open-goal-segment" x1={start * scaleX} x2={end * scaleX} y1={fieldHeight} y2={fieldHeight} />
+        ))}
 
         {result && (
           <>

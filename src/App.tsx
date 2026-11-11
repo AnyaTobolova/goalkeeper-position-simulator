@@ -1682,6 +1682,7 @@ export function App() {
             result={result}
             showDimensions={showDimensions}
             visualHints={shownFeedback?.visualHints ?? []}
+            showOpenGoal={Boolean(shownFeedback)}
             hideBall={isReactionLevel && !reactionActive}
             wall={level.freeKick ? wall : undefined}
             onGoalkeeperChange={(point) => {
@@ -1739,6 +1740,7 @@ export function App() {
                 <span>
                   Нападающему открыто <strong>{result.evaluation.openGoalPercent}%</strong> ворот
                 </span>
+                <span>Открытая часть отмечена оранжевым на линии ворот.</span>
                 {result.evaluation.optimalOpenGoalPercent !== undefined && result.evaluation.optimalOpenGoalPercent < (result.evaluation.openGoalPercent ?? 0) && (
                   <span className="open-goal-best">
                     из лучшей точки - {result.evaluation.optimalOpenGoalPercent}%
@@ -1747,6 +1749,12 @@ export function App() {
                       : ""}
                   </span>
                 )}
+              </div>
+            )}
+            {shownFeedback && result && level.freeKick && (
+              <div className="open-goal-row" aria-label="Открытая часть ворот при штрафном">
+                <span>Оранжевым показана примерно открытая часть ворот с учётом вратаря и стенки.</span>
+                <span>Это схема по земле: высота удара не учитывается.</span>
               </div>
             )}
             {shownFeedback && result && (
