@@ -3496,3 +3496,22 @@ input:focus {
 .contextual-hint > svg { flex: 0 0 auto; color: #ffcf33; }
 .contextual-hint > span { flex: 1; }
 .contextual-hint-close { flex: 0 0 44px; width: 44px; min-height: 44px; padding: 0; background: transparent; }
+
+.correction-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.correction-actions button {
+  flex: 1 1 auto;
+}
+
+.similar-message {
+  padding: 10px 12px;
+  color: #fff8d9;
+  background: #142f4d;
+  border: 1px solid #e4bc44;
+  border-radius: 10px;
+}

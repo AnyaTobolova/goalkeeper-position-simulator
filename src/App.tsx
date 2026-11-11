@@ -5,7 +5,7 @@ import { PlayerPanel } from "./components/PlayerPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { StatsPanel } from "./components/StatsPanel";
 import { checkAnswer, resolveTimeoutResult } from "./domain/evaluate";
-import { applyLevelVariation } from "./domain/variation";
+import { applyLevelVariation, mirrorLevel } from "./domain/variation";
 import { RulesQuiz } from "./components/RulesQuiz";
 import { PenaltyShootout } from "./components/PenaltyShootout";
 import { computeBadges, keeperRank, newlyEarnedBadges, type BadgeState } from "./domain/badges";
@@ -918,6 +918,8 @@ export function App() {
   const [pitch, setPitch] = useState<PitchConfig>(() => loadPitch());
   const [progress, setProgress] = useState<Progress>(() => loadPlayerProgress(loadActivePlayerId(loadPlayers())));
   const [levelIndex, setLevelIndex] = useState(0);
+  const [mirroredLevelId, setMirroredLevelId] = useState<string | null>(null);
+  const [similarMessage, setSimilarMessage] = useState<string | null>(null);
   const [goalkeeper, setGoalkeeper] = useState<Point>(() => startGoalkeeperForLevel(levels[0], 0));
   const [goalkeeperFacing, setGoalkeeperFacing] = useState(() => startFacingForLevel(levels[0], startGoalkeeperForLevel(levels[0], 0), 0));
   const [wall, setWall] = useState<WallConfig>(() => startWallForLevel(levels[0]));
@@ -998,7 +1000,7 @@ export function App() {
   const variationAttempt = variationRef.current.attempt;
   // Пенальти пробивается с точки пенальти активного пресета,
   // поэтому мяч и бьющий подгоняются под разметку.
-  const preparedLevel = useMemo<Level>(() => {
+  const basePreparedLevel = useMemo<Level>(() => {
     if (rawLevel.scenarioType !== "penalty") {
       return applyLevelVariation(rawLevel, variationAttempt);
     }
@@ -1018,6 +1020,10 @@ export function App() {
       players: rawLevel.players.map((player) => (player.hasBall ? { ...player, y: spotY + 4 } : player))
     };
   }, [pitch, rawLevel, variationAttempt]);
+  const preparedLevel = useMemo(
+    () => mirroredLevelId === rawLevel.id ? mirrorLevel(basePreparedLevel) : basePreparedLevel,
+    [basePreparedLevel, mirroredLevelId, rawLevel.id]
+  );
   // Пас во время отсчета: после срабатывания мяч уходит к другому игроку,
   // старая точка мяча остается для проверки перестроения.
   const [reactionPassDone, setReactionPassDone] = useState(false);
@@ -1211,6 +1217,8 @@ export function App() {
     const nextLevel = trainingLevels[safeIndex];
     const nextGoalkeeper = startGoalkeeperForLevel(nextLevel, safeIndex);
     setLevelIndex(safeIndex);
+    setMirroredLevelId(null);
+    setSimilarMessage(null);
     setGoalkeeper(nextGoalkeeper);
     setGoalkeeperFacing(startFacingForLevel(nextLevel, nextGoalkeeper, safeIndex));
     setWall(startWallForLevel(nextLevel));
@@ -1304,7 +1312,7 @@ export function App() {
     setReactionTimeLeft(null);
     setProgress(nextProgress);
     setSessionStreak((current) => (finalResult.result === "correct" ? current + 1 : 0));
-    setSessionLog((current) => [
+    setSessionLog((current) => customSession && current.some((item) => item.levelId === level.id) ? current : [
       ...current,
       { levelId: level.id, result: finalResult.result, score: finalResult.score, errorType: finalResult.errorType ?? finalResult.evaluation.mainErrorType }
     ]);
@@ -1429,11 +1437,11 @@ export function App() {
     setSummaryOpen(true);
   }
 
-  function resetLevel() {
-    const startGoalkeeper = startGoalkeeperForLevel(level, levelIndex);
+  function resetLevel(startLevel: Level = preparedLevel) {
+    const startGoalkeeper = startGoalkeeperForLevel(startLevel, levelIndex);
     setGoalkeeper(startGoalkeeper);
-    setGoalkeeperFacing(startFacingForLevel(level, startGoalkeeper, levelIndex));
-    setWall(startWallForLevel(level));
+    setGoalkeeperFacing(startFacingForLevel(startLevel, startGoalkeeper, levelIndex));
+    setWall(startWallForLevel(startLevel));
     setResult(null);
     setHintVisible(false);
     setWhyVisible(false);
@@ -1441,6 +1449,16 @@ export function App() {
     setReactionTimeLeft(null);
     setReactionPassDone(false);
     setExitChoice(null);
+    setSimilarMessage(null);
+  }
+
+  function trySimilarLevel() {
+    const nextLevel = mirrorLevel(preparedLevel);
+    setMirroredLevelId(mirroredLevelId === rawLevel.id ? null : rawLevel.id);
+    resetLevel(nextLevel);
+    setSimilarMessage(Math.abs(preparedLevel.ball.x - nextLevel.ball.x) > 0.1
+      ? "Та же идея, другая сторона"
+      : "Та же идея: попробуй ещё раз");
   }
 
   function rotateGoalkeeper(delta: number) {
@@ -1644,6 +1662,8 @@ export function App() {
             </div>
           )}
 
+          {similarMessage && !result && <p className="similar-message" role="status">{similarMessage}</p>}
+
           {playerSelected && onboardingComplete && contextualHint?.levelId === level.id && (
             <div className="contextual-hint" role="status">
               <Lightbulb size={20} aria-hidden="true" />
@@ -1769,6 +1789,12 @@ export function App() {
                   <strong>{result.result === "correct" ? "Как закрепить" : "Как поправить"}</strong>
                   <span>{shownFeedback.mainAdvice}</span>
                 </div>
+                {result.result !== "correct" && (
+                  <div className="correction-actions">
+                    <button type="button" onClick={() => resetLevel()}><RotateCcw size={18} />Поправить</button>
+                    <button type="button" onClick={trySimilarLevel}><RotateCw size={18} />Похожая ситуация</button>
+                  </div>
+                )}
               </>
             )}
 
@@ -1857,7 +1883,7 @@ export function App() {
                 </button>
               )}
 
-              <button type="button" onClick={resetLevel}>
+              <button type="button" onClick={() => resetLevel()}>
                 <RotateCcw size={18} />
                 <span>Повтор</span>
               </button>
@@ -1915,7 +1941,7 @@ export function App() {
           </button>
         )}
 
-        <button className="secondary" type="button" aria-label="Повтор" onClick={resetLevel}>
+        <button className="secondary" type="button" aria-label="Повтор" onClick={() => resetLevel()}>
           <RotateCcw size={18} />
           <span>Повтор</span>
         </button>
