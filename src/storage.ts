@@ -160,6 +160,14 @@ export function saveOnboardingComplete(done: boolean) {
   localStorage.setItem(onboardingKey, String(done));
 }
 
+export function loadContextualHintSeen(hint: "analysis" | "free_kick" | "cross" | "penalty") {
+  return localStorage.getItem(`goalkeeper-sim:hint-${hint}`) === "true";
+}
+
+export function saveContextualHintSeen(hint: "analysis" | "free_kick" | "cross" | "penalty") {
+  localStorage.setItem(`goalkeeper-sim:hint-${hint}`, "true");
+}
+
 export function loadReactionDifficulty(): ReactionDifficulty {
   const saved = localStorage.getItem(reactionDifficultyKey);
 

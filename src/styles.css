@@ -3480,3 +3480,19 @@ input:focus {
 .figure-head {
   fill: url(#skin-shade);
 }
+
+.contextual-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  color: #fff8d9;
+  background: #142f4d;
+  border: 1px solid #e4bc44;
+  border-radius: 10px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.contextual-hint > svg { flex: 0 0 auto; color: #ffcf33; }
+.contextual-hint > span { flex: 1; }
+.contextual-hint-close { flex: 0 0 44px; width: 44px; min-height: 44px; padding: 0; background: transparent; }

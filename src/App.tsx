@@ -21,6 +21,8 @@ import {
   loadDayStreak,
   loadMarathonBest,
   loadOnboardingComplete,
+  loadContextualHintSeen,
+  saveContextualHintSeen,
   loadPenaltyBest,
   loadPitch,
   loadPlayerLastLevelIndex,
@@ -47,313 +49,44 @@ import {
 } from "./storage";
 
 const onboardingCards = [
-  {
-    title: "Начало задания",
-    visual: "position",
-    text: "Перетащи вратаря за точку ног. Именно эта белая точка решает, попал ли вратарь в нужную зону."
-  },
-  {
-    title: "Корпус к мячу",
-    visual: "body",
-    text: "Жёлтый указатель на вратаре показывает поворот корпуса. Его можно потянуть на поле или повернуть корпус кнопками в панели."
-  },
-  {
-    title: "Зоны после ответа",
-    visual: "zones",
-    text: "Зелёная зона - лучшая позиция, оранжевая - допустимо. Красная зона появляется только при опасной ошибке глубины."
-  },
-  {
-    title: "Стрелка поправки",
-    visual: "feedback",
-    text: "Голубая стрелка показывает, куда переставить точку ног. Она не про корпус: корпус показывает жёлтый указатель на вратаре."
-  },
-  {
-    title: "Разбор после ответа",
-    visual: "analysis",
-    text: "После проверки смотри короткий вывод и чеклист. Кнопка «Почему так и что покажет поле» открывает объяснение прямо в разборе."
-  },
-  {
-    title: "Удар с исходом",
-    visual: "feedback",
-    text: "После ответа мяч летит: при ошибке - в открытый угол (гол), при правильной позиции - в тебя (сейв). Рядом видно, сколько процентов ворот было открыто нападающему."
-  },
-  {
-    title: "Стенка при штрафном",
-    visual: "wall",
-    text: "В штрафных выбери число игроков и перетащи стенку в подсвеченную зону. Стенка закрывает часть ворот, а вратарь должен видеть мяч."
-  },
-  {
-    title: "Пенальти и правила",
-    visual: "position",
-    text: "В пенальти действует настоящее правило: до удара держи хотя бы часть одной ноги на линии ворот. Кнопка «Правила» в шапке открывает квиз по правилам вратаря."
-  },
-  {
-    title: "Режимы в меню",
-    visual: "stats",
-    text: "В меню есть «Тренировка дня» на 10 ситуаций с серией по дням, «Марафон» на очки без подсказок, «Слабые места» и «Серия пенальти». За навыки даются бейджи и растет звание вратаря."
-  },
-  {
-    title: "Решение на подаче",
-    visual: "wall",
-    text: "На навесах сначала выбери решение: «Выйду на мяч» или «Останусь в воротах». Чистую подачу во вратарскую вратарь забирает сам, в толпу выбегать нельзя."
-  },
-  {
-    title: "Игроки и статистика",
-    visual: "stats",
-    text: "Можно добавить нескольких детей без регистрации. В статистике выбирай игрока и смотри его ошибки, слабые темы и задания для повтора."
-  },
-  {
-    title: "Поле и ворота",
-    visual: "settings",
-    text: "В настройках можно менять формат игры, размеры поля и ворот. Это полезно, если матчи проходят на разных площадках."
-  }
+  { title: "Найди мяч", visual: "ball", text: "Главное в задании — мяч. Сначала посмотри, откуда будут бить: от этого зависит, где встать." },
+  { title: "Поставь вратаря", visual: "position", text: "Перетащи вратаря за белую точку под ногами. Именно она решает, попал ли он в нужную зону." },
+  { title: "Поверни корпус к мячу", visual: "body", text: "Жёлтый указатель на вратаре — это поворот корпуса. Разверни вратаря грудью к мячу — так он готов к удару." }
 ];
 
-function LessonBall({ x, y, r = 3.3 }: { x: number; y: number; r?: number }) {
-  return (
-    <g className="lesson-ball" transform={`translate(${x} ${y})`}>
-      <circle className="lesson-ball-shadow" cx="0.25" cy="0.55" r={r} />
-      <circle className="lesson-ball-base" cx="0" cy="0" r={r} />
-      <path className="lesson-ball-patch" d={`M 0 ${-r * 0.62} L ${r * 0.56} ${-r * 0.16} L ${r * 0.34} ${r * 0.54} L ${-r * 0.34} ${r * 0.54} L ${-r * 0.56} ${-r * 0.16} Z`} />
-      <path className="lesson-ball-stitch" d={`M 0 ${-r * 0.62} L 0 ${-r * 0.98} M ${r * 0.56} ${-r * 0.16} L ${r * 0.96} ${-r * 0.34} M ${r * 0.34} ${r * 0.54} L ${r * 0.62} ${r * 0.9} M ${-r * 0.34} ${r * 0.54} L ${-r * 0.62} ${r * 0.9} M ${-r * 0.56} ${-r * 0.16} L ${-r * 0.96} ${-r * 0.34}`} />
-    </g>
-  );
-}
+const contextualHintTexts = {
+  analysis: "Зелёная зона — лучшая, оранжевая — допустимо. Голубая стрелка — куда переставить ноги.",
+  free_kick: "Выбери число игроков в стенке и перетащи её в подсвеченную зону — но вратарь должен видеть мяч.",
+  cross: "Сначала реши: выйти на мяч или остаться в воротах.",
+  penalty: "До удара держи часть ноги на линии ворот."
+} as const;
 
-function LessonAttacker({ x, y, scale = 1.7 }: { x: number; y: number; scale?: number }) {
-  return (
-    <g className="figure attacker-figure" transform={`translate(${x} ${y}) scale(${scale})`}>
-      <g transform="translate(0 -3.85)">
-        <ellipse className="figure-shadow" cx="0" cy="3.8" rx="1.75" ry="0.55" />
-        <circle className="figure-head" cx="0" cy="-3.1" r="0.72" />
-        <path className="figure-hair" d="M -0.65 -3.25 Q 0 -4.05 0.72 -3.25 Q 0.18 -3.55 -0.65 -3.25" />
-        <path className="figure-shirt" d="M -1.35 -2.15 L 1.35 -2.15 L 1.65 0.75 Q 0 1.35 -1.65 0.75 Z" />
-        <path className="figure-sleeve" d="M -1.35 -1.95 L -2.25 -0.55" />
-        <path className="figure-sleeve" d="M 1.35 -1.95 L 2.25 -0.55" />
-        <path className="figure-shorts" d="M -1.2 0.95 L 1.2 0.95 L 0.82 2.05 L -0.82 2.05 Z" />
-        <path className="figure-sock" d="M -0.62 2 L -1.05 3.8" />
-        <path className="figure-sock" d="M 0.62 2 L 1.05 3.8" />
-      </g>
-    </g>
-  );
-}
-
-function LessonGoalkeeper({ x, y, facing = 32, scale = 1.7 }: { x: number; y: number; facing?: number; scale?: number }) {
-  return (
-    <g className="goalkeeper-figure" transform={`translate(${x} ${y}) scale(${scale})`}>
-      <g transform="translate(0 -3.85)">
-        <ellipse className="figure-shadow" cx="0" cy="3.9" rx="1.9" ry="0.55" />
-        <g className="keeper-direction" transform={`translate(0 1.4) rotate(${facing}) translate(0 -1.4)`}>
-          <path className="keeper-facing-cone" d="M 0 -5.2 L -1.35 -2.2 L 1.35 -2.2 Z" />
-          <path className="keeper-facing-mark" d="M 0 -5.1 L -0.72 -4.05 L 0.72 -4.05 Z" />
-        </g>
-        <circle className="figure-head" cx="0" cy="-3.25" r="0.78" />
-        <path className="figure-hair" d="M -0.7 -3.3 Q 0 -4.08 0.76 -3.3 Q 0.2 -3.6 -0.7 -3.3" />
-        <path className="keeper-shirt" d="M -1.45 -2.2 L 1.45 -2.2 L 1.72 0.8 Q 0 1.42 -1.72 0.8 Z" />
-        <path className="keeper-arm" d="M -1.42 -1.85 L -2.65 -0.2" />
-        <path className="keeper-arm" d="M 1.42 -1.85 L 2.65 -0.2" />
-        <path className="keeper-shorts" d="M -1.18 0.95 L 1.18 0.95 L 0.8 2.1 L -0.8 2.1 Z" />
-        <path className="keeper-leg" d="M -0.58 2 L -1.1 3.85" />
-        <path className="keeper-leg" d="M 0.58 2 L 1.1 3.85" />
-        <circle className="keeper-glove" cx="-2.75" cy="-0.05" r="0.42" />
-        <circle className="keeper-glove" cx="2.75" cy="-0.05" r="0.42" />
-      </g>
-    </g>
-  );
-}
-
-function LessonWall({ x, y, count = 3, scale = 1.45 }: { x: number; y: number; count?: number; scale?: number }) {
-  const spacing = 1.65;
-  const start = -((count - 1) * spacing) / 2;
-
-  return (
-    <g className="wall-figure" transform={`translate(${x} ${y}) scale(${scale})`}>
-      {Array.from({ length: count }).map((_, index) => {
-        const playerX = start + index * spacing;
-
-        return (
-          <g key={index} className="wall-player" transform={`translate(${playerX} 0)`}>
-            <ellipse className="figure-shadow" cx="0" cy="1.5" rx="1" ry="0.32" />
-            <circle className="figure-head" cx="0" cy="-2.65" r="0.56" />
-            <path className="wall-shirt" d="M -0.95 -1.9 L 0.95 -1.9 L 1.12 0.2 Q 0 0.72 -1.12 0.2 Z" />
-            <path className="wall-arm" d="M -0.9 -1.45 L -1.45 -0.15" />
-            <path className="wall-arm" d="M 0.9 -1.45 L 1.45 -0.15" />
-            <path className="wall-leg" d="M -0.35 0.45 L -0.65 1.55" />
-            <path className="wall-leg" d="M 0.35 0.45 L 0.65 1.55" />
-          </g>
-        );
-      })}
-    </g>
-  );
-}
+type ContextualHint = keyof typeof contextualHintTexts;
 
 function OnboardingVisual({ visual }: { visual: string }) {
-  switch (visual) {
-    case "position":
-      return (
-        <div className="lesson-visual lesson-position" aria-hidden="true">
-          <svg className="lesson-field-svg" viewBox="0 0 160 92">
-            <rect className="lesson-grass" x="0" y="0" width="160" height="92" />
-            <rect className="lesson-stripe" x="0" y="18" width="160" height="18" />
-            <rect className="lesson-stripe" x="0" y="54" width="160" height="18" />
-            <path className="line" d="M 44 62 L 116 62 L 116 92 L 44 92 Z" />
-            <path className="goal-mouth" d="M 61 80 L 99 80 L 96 92 L 64 92 Z" />
-            <path className="goal-net" d="M 63 81 L 97 81 L 95 91 L 65 91 Z" />
-            <line className="goal-line-strong" x1="58" y1="80" x2="102" y2="80" />
-            <line className="goal-front-frame" x1="61" y1="80" x2="99" y2="80" />
-            <line className="goal-post" x1="61" y1="80" x2="64" y2="92" />
-            <line className="goal-post" x1="99" y1="80" x2="96" y2="92" />
-            <LessonGoalkeeper x={80} y={76} facing={-28} scale={1.55} />
-            <circle className="keeper-foot-point" cx="80" cy="76" r="1.2" />
-            <LessonAttacker x={46} y={27} scale={1.7} />
-            <LessonBall x={46} y={35} r={3.1} />
-            <text className="lesson-svg-label" x="94" y="36">перетащи вратаря</text>
-          </svg>
-        </div>
-      );
-    case "zones":
-      return (
-        <div className="lesson-visual lesson-zones" aria-hidden="true">
-          <svg className="lesson-field-svg" viewBox="0 0 160 92">
-            <rect className="lesson-grass" x="0" y="0" width="160" height="92" />
-            <rect className="lesson-stripe" x="0" y="18" width="160" height="18" />
-            <rect className="lesson-stripe" x="0" y="54" width="160" height="18" />
-            <line className="goal-line-strong" x1="58" y1="86" x2="102" y2="86" />
-            <polygon className="shot-angle" points="118,18 58,86 102,86" />
-            <line className="analysis-line" x1="80" y1="86" x2="118" y2="18" />
-            <g transform="rotate(28 79 62)">
-              <rect className="danger-zone active" x="68" y="72" width="22" height="18" rx="9" />
-              <rect className="almost-zone" x="62" y="38" width="34" height="42" rx="17" />
-              <rect className="correct-zone" x="72" y="51" width="14" height="18" rx="7" />
-              <rect className="danger-zone active" x="66" y="18" width="26" height="18" rx="9" />
-            </g>
-            <LessonGoalkeeper x={79} y={62} facing={28} />
-            <circle className="keeper-foot-point" cx="79" cy="62" r="1.25" />
-            <LessonBall x={118} y={18} />
-            <text className="lesson-svg-label" x="103" y="31">опасно</text>
-            <text className="lesson-svg-label" x="96" y="53">почти</text>
-            <text className="lesson-svg-label" x="88" y="69">правильно</text>
-          </svg>
-        </div>
-      );
-    case "body":
-      return (
-        <div className="lesson-visual lesson-body" aria-hidden="true">
-          <svg className="lesson-body-svg" viewBox="0 0 160 92">
-            <rect className="lesson-grass" x="0" y="0" width="160" height="92" />
-            <rect className="lesson-stripe" x="0" y="18" width="160" height="18" />
-            <rect className="lesson-stripe" x="0" y="54" width="160" height="18" />
-            <path className="line" d="M 45 70 L 115 70 L 115 92 L 45 92 Z" />
-            <line className="analysis-line" x1="80" y1="68" x2="116" y2="22" />
-            <LessonAttacker x={116} y={15} scale={1.4} />
-            <LessonBall x={116} y={23} r={3.1} />
-            <LessonGoalkeeper x={80} y={68} facing={38} scale={1.95} />
-            <circle className="keeper-foot-point" cx="80" cy="68" r="1.3" />
-            <text className="lesson-svg-label" x="96" y="57">стрелка корпуса</text>
-          </svg>
-          <div className="lesson-turn-buttons">
-            <span>
-              <RotateCcw size={16} />
-            </span>
-            <span>
-              <RotateCw size={16} />
-            </span>
-          </div>
-          <span className="lesson-caption turn-caption">эти кнопки поворачивают корпус</span>
-        </div>
-      );
-    case "feedback":
-      return (
-        <div className="lesson-visual lesson-feedback" aria-hidden="true">
-          <svg className="lesson-field-svg" viewBox="0 0 160 92">
-            <rect className="lesson-grass" x="0" y="0" width="160" height="92" />
-            <rect className="lesson-stripe" x="0" y="18" width="160" height="18" />
-            <rect className="lesson-stripe" x="0" y="54" width="160" height="18" />
-            <line className="goal-line-strong" x1="58" y1="86" x2="102" y2="86" />
-            <line className="analysis-line" x1="80" y1="86" x2="118" y2="18" />
-            <g transform="rotate(28 84 60)">
-              <rect className="almost-zone" x="68" y="43" width="32" height="34" rx="16" />
-              <rect className="correct-zone" x="77" y="54" width="14" height="16" rx="7" />
-            </g>
-            <line className="lesson-correction-line" x1="75" y1="67" x2="86" y2="61" />
-            <path className="lesson-correction-head" d="M 86 61 L 80.5 60 L 83.4 65.2 Z" />
-            <LessonGoalkeeper x={75} y={67} facing={28} />
-            <circle className="keeper-foot-point" cx="75" cy="67" r="1.25" />
-            <circle className="target-foot-point" cx="86" cy="61" r="1.45" />
-            <LessonBall x={118} y={18} />
-            <text className="lesson-svg-label" x="91" y="58">куда поправить</text>
-          </svg>
-          <div className="lesson-hint-legend">
-            <span>
-              <i className="legend-mark arrow" />
-              голубая стрелка
-            </span>
-            <span>
-              <i className="lesson-body-mark" />
-              жёлтый корпус
-            </span>
-          </div>
-        </div>
-      );
-    case "analysis":
-      return (
-        <div className="lesson-visual lesson-analysis" aria-hidden="true">
-          <div className="lesson-analysis-panel">
-            <span className="lesson-analysis-title">Разбор позиции</span>
-            <p>Ты правильно сместился к мячу, но стоишь слишком близко к линии ворот.</p>
-            <div className="lesson-why-button">
-              <Eye size={16} />
-              <span>Почему так и что покажет поле</span>
-            </div>
-            <div className="lesson-mini-criteria">
-              <span className="lesson-check good">линия хорошо</span>
-              <span className="lesson-check almost">глубину поправить</span>
-            </div>
-          </div>
-        </div>
-      );
-    case "wall":
-      return (
-        <div className="lesson-visual lesson-wall" aria-hidden="true">
-          <svg className="lesson-field-svg" viewBox="0 0 160 92">
-            <rect className="lesson-grass" x="0" y="0" width="160" height="92" />
-            <rect className="lesson-stripe" x="0" y="18" width="160" height="18" />
-            <rect className="lesson-stripe" x="0" y="54" width="160" height="18" />
-            <path className="line" d="M 50 75 L 110 75 L 110 92 L 50 92 Z" />
-            <line className="goal-line-strong" x1="58" y1="92" x2="102" y2="92" />
-            <line className="analysis-line" x1="118" y1="18" x2="59" y2="92" />
-            <rect className="wall-target-zone" x="72" y="45" width="28" height="18" rx="8" />
-            <LessonWall x={86} y={58} count={3} />
-            <LessonGoalkeeper x={74} y={82} facing={28} scale={1.35} />
-            <LessonBall x={118} y={18} />
-            <text className="lesson-svg-label" x="102" y="56">стенка</text>
-            <text className="lesson-svg-label" x="34" y="82">вратарь</text>
-          </svg>
-        </div>
-      );
-    case "stats":
-      return (
-        <div className="lesson-visual lesson-icons" aria-hidden="true">
-          <span>
-            <BarChart3 size={22} />
-          </span>
-          <b>ошибки</b>
-          <b>повторы</b>
-        </div>
-      );
-    case "settings":
-      return (
-        <div className="lesson-visual lesson-icons" aria-hidden="true">
-          <span>
-            <Settings2 size={22} />
-          </span>
-          <b>поле</b>
-          <b>ворота</b>
-        </div>
-      );
-    default:
-      return null;
-  }
+  const ballOnly = visual === "ball";
+  const body = visual === "body";
+  return (
+    <div className="lesson-visual" aria-hidden="true">
+      <svg className="lesson-field-svg" viewBox="0 0 160 92">
+        <rect className="lesson-grass" width="160" height="92" />
+        <rect className="lesson-stripe" y="18" width="160" height="18" />
+        <rect className="lesson-stripe" y="54" width="160" height="18" />
+        <path className="line" d="M 36 75 L 36 53 L 124 53 L 124 75" />
+        <path d="M 62 75 L 62 84 L 98 84 L 98 75 M 62 78 L 98 78 M 62 81 L 98 81 M 68 75 L 68 84 M 74 75 L 74 84 M 80 75 L 80 84 M 86 75 L 86 84 M 92 75 L 92 84" fill="none" stroke="white" strokeWidth="0.5" opacity="0.65" />
+        <path d="M 62 75 L 98 75" fill="none" stroke="white" strokeWidth="1.5" />
+        <image href="/sprites/attacker-child-red-front.png" x={ballOnly ? 56 : 39} y={ballOnly ? 3 : 4} width="28" height="28" />
+        {ballOnly && <circle cx="81" cy="30" r="8" fill="none" stroke="#ffcf33" strokeWidth="1" strokeDasharray="2 1" />}
+        <circle cx={ballOnly ? 81 : 62} cy="30" r="3.3" fill="#fff" stroke="#111" strokeWidth="0.5" />
+        <path d={ballOnly ? "M 81 28 L 83 29.5 L 82 32 L 80 32 L 79 29.5 Z" : "M 62 28 L 64 29.5 L 63 32 L 61 32 L 60 29.5 Z"} fill="#222" />
+        {!ballOnly && <>
+          <image href="/sprites/keeper-child-stance.png" x="65" y="42" width="30" height="30" />
+          <path d={body ? "M 76 47 L 76 54 L 83 52 Z" : "M 80 49 L 77.5 53 L 82.5 53 Z"} fill="#ffcf33" stroke="#573d00" strokeWidth="0.35" />
+          <circle cx="80" cy="69" r="1.4" fill="white" stroke="#173723" strokeWidth="0.4" />
+        </>}
+      </svg>
+    </div>
+  );
 }
 
 function categoryTitle(category: Level["category"]) {
@@ -1194,6 +927,7 @@ export function App() {
   const [showDimensions, setShowDimensions] = useState(() => loadShowDimensions());
   const [onboardingComplete, setOnboardingComplete] = useState(() => loadOnboardingComplete());
   const [onboardingStep, setOnboardingStep] = useState(0);
+  const [contextualHint, setContextualHint] = useState<{ kind: ContextualHint; levelId: string } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [statsPlayerId, setStatsPlayerId] = useState(() => activePlayerId);
@@ -1345,6 +1079,24 @@ export function App() {
 
     return () => window.clearTimeout(revealTimer);
   }, [result, analysisRevealed]);
+  useEffect(() => {
+    if (!playerSelected || !onboardingComplete) return;
+    if (contextualHint && contextualHint.levelId !== level.id) {
+      setContextualHint(null);
+      return;
+    }
+    if (contextualHint) return;
+
+    const categoryHint = level.category === "free_kick" || level.category === "cross" || level.category === "penalty" ? level.category : null;
+    const nextHint = categoryHint && !result && !loadContextualHintSeen(categoryHint)
+      ? categoryHint
+      : result && analysisRevealed && !loadContextualHintSeen("analysis") ? "analysis" : null;
+    if (nextHint) {
+      saveContextualHintSeen(nextHint);
+      setContextualHint({ kind: nextHint, levelId: level.id });
+    }
+  }, [playerSelected, onboardingComplete, contextualHint, level.id, level.category, result, analysisRevealed]);
+
   const statsProgressByPlayer = useMemo(() => {
     return Object.fromEntries(players.map((player) => [player.id, player.id === activePlayerId ? progress : loadPlayerProgress(player.id)]));
   }, [activePlayerId, players, progress, statsRefreshKey]);
@@ -1889,6 +1641,16 @@ export function App() {
             <div className={`reaction-timer-banner ${reactionPhase}`} aria-live="polite">
               <strong>{reactionPhase === "waiting" ? "Мяч появится" : `Осталось ${reactionTimeLeft ?? effectiveReactionSeconds} сек.`}</strong>
               <span>{reactionPhase === "waiting" ? "Смотри расстановку игроков." : "Найди мяч, займи линию и остановись."}</span>
+            </div>
+          )}
+
+          {playerSelected && onboardingComplete && contextualHint?.levelId === level.id && (
+            <div className="contextual-hint" role="status">
+              <Lightbulb size={20} aria-hidden="true" />
+              <span>{contextualHintTexts[contextualHint.kind]}</span>
+              <button type="button" className="contextual-hint-close" aria-label="Закрыть подсказку" onClick={() => setContextualHint(null)}>
+                <X size={18} />
+              </button>
             </div>
           )}
 
