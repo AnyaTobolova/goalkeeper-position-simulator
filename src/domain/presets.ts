@@ -7,10 +7,10 @@ const adultMarkings = {
   centerCircleRadius: 9.15,
   hasPenaltyArea: true,
   penaltyAreaDepth: 16.5,
-  penaltyAreaWidth: 40.32,
+  penaltyAreaWidth: 40,
   hasGoalArea: true,
   goalAreaDepth: 5.5,
-  goalAreaWidth: 18.32,
+  goalAreaWidth: 18,
   hasPenaltySpot: true,
   penaltySpotDistance: 11,
   hasPenaltyArc: true,
@@ -20,8 +20,9 @@ const adultMarkings = {
 };
 
 export const goalPresets: Record<GoalPresetId, { name: string; width: number; height: number }> = {
-  mini_3x2: { name: "Мини-футбол / U8-U9", width: 3, height: 2 },
+  mini_3x2: { name: "Сохранённые размеры 3 × 2 м", width: 3, height: 2 },
   junior_5x2: { name: "Детские / юниорские", width: 5, height: 2 },
+  seven_7x2: { name: "Ворота 7 × 2 м", width: 7, height: 2 },
   adult_732x244: { name: "Взрослые", width: 7.32, height: 2.44 },
   custom: { name: "Свои размеры", width: 5, height: 2 }
 };
@@ -29,12 +30,12 @@ export const goalPresets: Record<GoalPresetId, { name: string; width: number; he
 export const pitchPresets: Record<PitchPresetId, PitchConfig> = {
   "5v5": {
     presetId: "5v5",
-    goalPresetId: "mini_3x2",
+    goalPresetId: "junior_5x2",
     name: "5 на 5, среднее поле",
     unit: "meters",
     fieldLength: 50,
     fieldWidth: 35,
-    goalWidth: 3,
+    goalWidth: 5,
     goalHeight: 2,
     markings: {
       ...adultMarkings,
@@ -92,12 +93,12 @@ export const pitchPresets: Record<PitchPresetId, PitchConfig> = {
   },
   "9v9": {
     presetId: "9v9",
-    goalPresetId: "junior_5x2",
+    goalPresetId: "seven_7x2",
     name: "9 на 9, юношеское поле",
     unit: "meters",
     fieldLength: 65,
     fieldWidth: 50,
-    goalWidth: 5,
+    goalWidth: 7,
     goalHeight: 2,
     markings: {
       ...adultMarkings,
@@ -113,37 +114,14 @@ export const pitchPresets: Record<PitchPresetId, PitchConfig> = {
   },
   "11v11": {
     presetId: "11v11",
-    goalPresetId: "adult_732x244",
-    name: "11 на 11, взрослое поле",
+    goalPresetId: "seven_7x2",
+    name: "11 на 11, футбольное поле",
     unit: "meters",
     fieldLength: 105,
     fieldWidth: 68,
-    goalWidth: 7.32,
-    goalHeight: 2.44,
-    markings: adultMarkings
-  },
-  futsal: {
-    presetId: "futsal",
-    goalPresetId: "mini_3x2",
-    name: "Футзал",
-    unit: "meters",
-    fieldLength: 40,
-    fieldWidth: 20,
-    goalWidth: 3,
+    goalWidth: 7,
     goalHeight: 2,
-    markings: {
-      ...adultMarkings,
-      centerCircleRadius: 3,
-      hasPenaltyArea: true,
-      penaltyAreaDepth: 6,
-      penaltyAreaWidth: 16,
-      hasGoalArea: false,
-      goalAreaDepth: undefined,
-      goalAreaWidth: undefined,
-      penaltySpotDistance: 6,
-      penaltyArcRadius: 6,
-      hasPenaltyArc: false
-    }
+    markings: adultMarkings
   },
   custom: {
     presetId: "custom",
@@ -167,3 +145,27 @@ export const pitchPresets: Record<PitchPresetId, PitchConfig> = {
     }
   }
 };
+
+// Старые профили остаются читаемыми: меняем только прежние стандартные
+// значения, а введённые вручную размеры ворот сохраняем.
+export function normalizeStoredPitch(saved: PitchConfig): PitchConfig {
+  if (String(saved.presetId) === "futsal") {
+    const fallback = pitchPresets["5v5"];
+    return saved.goalPresetId === "custom"
+      ? { ...fallback, goalPresetId: "custom", goalWidth: saved.goalWidth, goalHeight: saved.goalHeight }
+      : fallback;
+  }
+
+  const oldDefault =
+    (saved.presetId === "5v5" && saved.goalPresetId === "mini_3x2" && saved.goalWidth === 3 && saved.goalHeight === 2) ||
+    (saved.presetId === "9v9" && saved.goalPresetId === "junior_5x2" && saved.goalWidth === 5 && saved.goalHeight === 2) ||
+    (saved.presetId === "11v11" && saved.goalPresetId === "adult_732x244" && saved.goalWidth === 7.32 && saved.goalHeight === 2.44);
+  const preset = pitchPresets[saved.presetId];
+  if (oldDefault && preset) return preset;
+
+  const goalPresetId = saved.goalPresetId === "mini_3x2" || saved.goalPresetId === "adult_732x244" ? "custom" : saved.goalPresetId;
+  if (saved.presetId !== "custom" && preset) {
+    return { ...preset, goalPresetId, goalWidth: saved.goalWidth, goalHeight: saved.goalHeight };
+  }
+  return { ...saved, goalPresetId };
+}

@@ -56,7 +56,6 @@ export function SettingsPanel({ pitch, showDimensions, reactionTimeSeconds, onPi
           <option value="8v8">8 на 8</option>
           <option value="9v9">9 на 9</option>
           <option value="11v11">11 на 11</option>
-          <option value="futsal">Футзал</option>
           <option value="custom">Свои размеры</option>
         </select>
       </label>
@@ -64,9 +63,8 @@ export function SettingsPanel({ pitch, showDimensions, reactionTimeSeconds, onPi
       <label>
         Ворота
         <select value={pitch.goalPresetId} onChange={(event) => updateGoalPreset(event.target.value as GoalPresetId)}>
-          <option value="mini_3x2">3 x 2 м</option>
           <option value="junior_5x2">5 x 2 м</option>
-          <option value="adult_732x244">7,32 x 2,44 м</option>
+          <option value="seven_7x2">7 x 2 м</option>
           <option value="custom">Свои размеры</option>
         </select>
       </label>

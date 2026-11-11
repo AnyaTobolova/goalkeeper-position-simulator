@@ -1,8 +1,8 @@
 export type Unit = "meters" | "yards";
 
-export type PitchPresetId = "5v5" | "7v7" | "8v8" | "9v9" | "11v11" | "futsal" | "custom";
+export type PitchPresetId = "5v5" | "7v7" | "8v8" | "9v9" | "11v11" | "custom";
 
-export type GoalPresetId = "mini_3x2" | "junior_5x2" | "adult_732x244" | "custom";
+export type GoalPresetId = "mini_3x2" | "junior_5x2" | "seven_7x2" | "adult_732x244" | "custom";
 
 export type LevelCategory =
   | "shot_angle"

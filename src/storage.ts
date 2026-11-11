@@ -1,5 +1,5 @@
 import type { PitchConfig, PlayerProfile, Progress, ReactionDifficulty, ReactionTimeSeconds, TrainingMode } from "./domain/types";
-import { pitchPresets } from "./domain/presets";
+import { normalizeStoredPitch, pitchPresets } from "./domain/presets";
 
 const progressKey = "goalkeeper-sim:progress";
 const playersKey = "goalkeeper-sim:players";
@@ -123,18 +123,7 @@ export function loadPitch(): PitchConfig {
       return pitchPresets["7v7"];
     }
 
-    const parsed = JSON.parse(saved) as PitchConfig;
-
-    if (parsed.presetId !== "custom" && pitchPresets[parsed.presetId]) {
-      return {
-        ...pitchPresets[parsed.presetId],
-        goalPresetId: parsed.goalPresetId,
-        goalWidth: parsed.goalWidth,
-        goalHeight: parsed.goalHeight
-      };
-    }
-
-    return parsed;
+    return normalizeStoredPitch(JSON.parse(saved) as PitchConfig);
   } catch {
     return pitchPresets["7v7"];
   }

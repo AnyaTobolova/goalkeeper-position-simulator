@@ -98,7 +98,7 @@ describe("угловые: единая школа стойки", () => {
         const effectivePitch = level.pitchPresetOverride ? pitchPresets[level.pitchPresetOverride] : pitch;
         const ball = toMeters(level.ball, effectivePitch);
         const distanceToCorner = Math.hypot(Math.min(ball.x, effectivePitch.fieldWidth - ball.x), ball.y);
-        expect(distanceToCorner).toBeLessThanOrEqual(effectivePitch.presetId === "futsal" ? 0.25 : 1);
+        expect(distanceToCorner).toBeLessThanOrEqual(1);
       }
     }
   });
