@@ -909,12 +909,16 @@ function placementAdvice(result: CheckResult | null, goalkeeper: Point) {
 }
 
 export function App() {
+  const [firstVisit] = useState(() => !localStorage.getItem("goalkeeper-sim:players"));
   const [players, setPlayers] = useState<PlayerProfile[]>(() => loadPlayers());
   const [activePlayerId, setActivePlayerId] = useState(() => {
     const loadedPlayers = loadPlayers();
     return loadActivePlayerId(loadedPlayers);
   });
   const [playerSelected, setPlayerSelected] = useState(false);
+  const [menuStep, setMenuStep] = useState<"player" | "pitch" | "training" | "data">("player");
+  const [dataReturnStep, setDataReturnStep] = useState<"player" | "pitch" | "training">("player");
+  const [hasEnteredGame, setHasEnteredGame] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState("");
   const [pitch, setPitch] = useState<PitchConfig>(() => loadPitch());
   const [progress, setProgress] = useState<Progress>(() => loadPlayerProgress(loadActivePlayerId(loadPlayers())));
@@ -1244,6 +1248,7 @@ export function App() {
     setSessionLog([]);
     moveToLevel(mode === "continue" ? savedLevelIndex : 0);
     setPlayerSelected(true);
+    setHasEnteredGame(true);
   }
 
   function startWeakSpots() {
@@ -1256,18 +1261,21 @@ export function App() {
     setCustomSession({ kind: "weak", ids });
     setSessionLog([]);
     setPlayerSelected(true);
+    setHasEnteredGame(true);
   }
 
   function startDayTraining() {
     setCustomSession({ kind: "day", ids: buildDayTrainingIds(progress, activePlayerId, todayIso()) });
     setSessionLog([]);
     setPlayerSelected(true);
+    setHasEnteredGame(true);
   }
 
   function startMarathon() {
     setCustomSession({ kind: "marathon", ids: buildMarathonIds() });
     setSessionLog([]);
     setPlayerSelected(true);
+    setHasEnteredGame(true);
   }
 
   function submitAnswer(reason: "manual" | "timeout" = "manual") {
@@ -1571,7 +1579,7 @@ export function App() {
           )}
         </div>
         <div className="top-actions">
-          <button type="button" className="player-chip" title="Главное меню: смена игрока, блоки, серия пенальти" onClick={() => setPlayerSelected(false)}>
+          <button type="button" className="player-chip" title="Главное меню: смена игрока, блоки, серия пенальти" onClick={() => { setMenuStep("player"); setPlayerSelected(false); }}>
             <Home size={18} />
             <span>Меню · {activePlayer?.name ?? "Игрок"}</span>
           </button>
@@ -1991,31 +1999,35 @@ export function App() {
           <section className="modal start-modal" role="dialog" aria-modal="true" aria-label="Главное меню">
             <div className="modal-header">
               <div>
-                <div className="eyebrow">Главное меню</div>
-                <h2>Кто сегодня тренируется?</h2>
+                <div className="eyebrow">Где стоять вратарю?</div>
+                <h2>{menuStep === "player" ? "Кто сегодня тренируется?" : menuStep === "pitch" ? "Выбери формат игры" : menuStep === "training" ? "Выбери тренировку" : "Данные и установка"}</h2>
               </div>
-              <button className="icon-button" type="button" aria-label="Вернуться к тренировке" title="Вернуться к тренировке" onClick={() => setPlayerSelected(true)}>
+              {hasEnteredGame && <button className="icon-button" type="button" aria-label="Вернуться к тренировке" title="Вернуться к тренировке" onClick={() => setPlayerSelected(true)}>
                 <X size={20} />
-              </button>
+              </button>}
             </div>
             <div className="start-body">
-              <div className="modal-grid single">
-                <PlayerPanel
-                  players={players}
-                  activePlayerId={activePlayerId}
-                  newPlayerName={newPlayerName}
-                  compact
-                  onActivePlayerChange={setActivePlayerId}
-                  onNewPlayerNameChange={setNewPlayerName}
-                  onAddPlayer={addPlayer}
-                  onDeletePlayer={deleteActivePlayer}
-                />
-              </div>
+              {menuStep !== "data" && <div className="menu-progress" aria-label={`Шаг ${menuStep === "player" ? 1 : menuStep === "pitch" ? 2 : 3} из 3`}><span className={menuStep === "player" ? "active" : ""}>1 Игрок</span><span className={menuStep === "pitch" ? "active" : ""}>2 Формат</span><span className={menuStep === "training" ? "active" : ""}>3 Тренировка</span></div>}
+              {menuStep === "player" && <>
+                <div className="menu-welcome"><span className="menu-welcome-icon"><Shield size={27} /></span><div><span>{firstVisit ? "Привет, вратарь!" : "С возвращением!"}</span><strong>{activePlayer?.name ?? "Игрок"}</strong><small>Звание: {keeperRank(masteredAllCount)} · закреплено {masteredAllCount} из {levels.length}</small></div></div>
+                <label className="menu-label">Выбрать игрока
+                  <select value={activePlayerId} onChange={(event) => setActivePlayerId(event.target.value)}>{players.map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}</select>
+                </label>
+                <div className="menu-add-player"><label className="menu-label" htmlFor="menu-new-player">Новый игрок</label><div className="add-player-row"><input id="menu-new-player" value={newPlayerName} type="text" placeholder="Имя игрока" maxLength={24} onChange={(event) => setNewPlayerName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addPlayer(); }} /><button type="button" onClick={addPlayer} disabled={!newPlayerName.trim()}>Добавить</button></div><small>Новый игрок получит свой прогресс.</small></div>
+                <button className="primary menu-next" type="button" onClick={() => setMenuStep("pitch")}>Это я <ChevronRight size={18} /></button>
+              </>}
 
-              <p className="rank-line">
-                Звание: <strong>{keeperRank(masteredAllCount)}</strong> · закреплено {masteredAllCount} из {levels.length}
-              </p>
+              {menuStep === "pitch" && <>
+                <p className="menu-intro">Для формата автоматически подберём размер ворот.</p>
+                <div className="menu-formats" aria-label="Формат игры">
+                  {(["5v5", "7v7", "8v8", "9v9", "11v11"] as const).map((id) => <button key={id} type="button" className={pitch.presetId === id ? "active" : ""} aria-pressed={pitch.presetId === id} onClick={() => handlePitchChange(pitchPresets[id])}>{id.replace("v", " × ")}</button>)}
+                </div>
+                <div className="menu-goal"><span>Размер ворот</span><strong>{pitch.goalWidth} × {pitch.goalHeight} м</strong><small>{pitch.presetId === "custom" || pitch.goalWidth !== pitchPresets[pitch.presetId].goalWidth || pitch.goalHeight !== pitchPresets[pitch.presetId].goalHeight ? "Сохранены свои размеры. Изменить их можно в настройках." : "Подобран для выбранного формата"}</small></div>
+                <div className="menu-navigation"><button type="button" onClick={() => setMenuStep("player")}>Назад</button><button className="primary" type="button" onClick={() => setMenuStep("training")}>Дальше <ChevronRight size={18} /></button></div>
+              </>}
 
+              {menuStep === "training" && <>
+              <div className="menu-selection">{activePlayer?.name} <span>·</span> {pitch.name} <span>·</span> ворота {pitch.goalWidth} × {pitch.goalHeight} м</div>
               <div className="start-section">
                 <div className="start-section-label">Программа тренировки</div>
                 <div className="start-mode-choice" aria-label="Выбор блока тренировки">
@@ -2072,8 +2084,10 @@ export function App() {
                 )}
               </div>
 
-              <details className="start-extra">
-                <summary>Данные и установка</summary>
+              <button className="menu-back" type="button" onClick={() => setMenuStep("pitch")}>← Изменить формат</button>
+              </>}
+
+              {menuStep === "data" && <div className="start-extra menu-data">
                 <div className="data-transfer" aria-label="Перенос прогресса">
                   <button type="button" className="ghost" onClick={exportProgress}>
                     <Save size={16} />
@@ -2101,7 +2115,9 @@ export function App() {
                     )}
                   </div>
                 )}
-              </details>
+                <button type="button" onClick={() => setMenuStep(dataReturnStep)}>Назад</button>
+              </div>}
+              {menuStep !== "data" && <button type="button" className="menu-data-link" onClick={() => { setDataReturnStep(menuStep); setMenuStep("data"); }}>Данные и установка</button>}
             </div>
           </section>
         </div>

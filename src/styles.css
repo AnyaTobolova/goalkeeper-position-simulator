@@ -3521,6 +3521,48 @@ input:focus {
   .field { height: clamp(300px, calc(100svh - 420px), 500px); min-height: 0; }
 }
 
+/* Главное меню: лёгкие CSS-акценты в стиле игрового поля. */
+.start-backdrop { place-items: center; background: rgba(4, 12, 29, .94); backdrop-filter: none; }
+.start-modal { width: min(560px, 100%); height: auto; border: 1px solid #2a8aca; border-radius: 16px; background: linear-gradient(155deg, #142b51, #09172f 75%); }
+.start-modal .modal-header { padding: 22px 22px 15px; background: transparent; border-bottom: 0; }
+.start-modal .modal-header h2 { color: #fff; font-size: clamp(22px, 5vw, 29px); }
+.start-modal .eyebrow { color: #65dafa; letter-spacing: .1em; }
+.start-modal .start-body { padding: 0 22px 18px; gap: 14px; }
+.menu-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; color: #93a9c0; font-size: 12px; }
+.menu-progress span { border-bottom: 2px solid #29425e; padding: 4px 0 8px; }
+.menu-progress span.active { color: #6ee8ff; border-color: #29cbf5; }
+.menu-welcome { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid #2a678d; border-radius: 12px; background: #102c4b; }
+.menu-welcome-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 13px; color: #ffcf33; background: #1d4564; }
+.menu-welcome > div { display: grid; gap: 3px; min-width: 0; }
+.menu-welcome span, .menu-welcome small, .menu-add-player small, .menu-intro, .menu-goal small, .menu-selection { color: #b8cde0; }
+.menu-welcome strong { color: white; font-size: 22px; overflow-wrap: anywhere; }
+.menu-label, .menu-add-player { display: grid; gap: 7px; color: #eaf6ff; font-size: 14px; font-weight: 700; }
+.menu-label select, .menu-add-player input { width: 100%; min-width: 0; min-height: 46px; }
+.menu-add-player small { font-size: 12px; font-weight: 400; }
+.menu-next { width: 100%; min-height: 52px; }
+.menu-intro { margin: 0; line-height: 1.45; }
+.menu-formats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.menu-formats button { min-height: 52px; padding: 8px 4px; border: 1px solid #315675; background: #122943; color: white; font-size: 14px; font-weight: 800; white-space: nowrap; }
+.menu-formats button.active { border-color: #52dcfa; background: #075682; box-shadow: inset 0 0 0 1px #52dcfa; }
+.menu-goal { display: grid; gap: 5px; padding: 16px; border-left: 3px solid #ffcf33; border-radius: 8px; background: #102b46; }
+.menu-goal span { color: #d0dfeb; font-size: 13px; }
+.menu-goal strong { color: #ffda52; font-size: 25px; }
+.menu-navigation { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; }
+.menu-navigation button { min-height: 50px; }
+.menu-selection { padding: 10px 12px; border-radius: 9px; background: #17344f; font-size: 13px; line-height: 1.4; }
+.menu-selection span { color: #ffcf33; }
+.start-modal .start-section { border-color: #294c68; background: #0d223c; }
+.start-modal .start-section-label { color: #70daf4; }
+.menu-data-link, .menu-back { justify-self: start; padding: 8px 0; min-height: 40px; border: 0; background: transparent; color: #a8c3d9; font-size: 13px; }
+.menu-data { display: grid; gap: 12px; padding: 14px; background: #10253d; }
+@media (max-width: 480px) {
+  .start-backdrop { padding: 10px; }
+  .start-modal { max-height: calc(100svh - 20px); }
+  .start-modal .modal-header { padding: 16px 16px 10px; }
+  .start-modal .start-body { padding: 0 16px 14px; gap: 11px; }
+  .menu-welcome { padding: 12px; }
+}
+
 .correction-actions {
   display: flex;
   flex-wrap: wrap;
