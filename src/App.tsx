@@ -1566,7 +1566,7 @@ export function App() {
             <small>ситуаций</small>
           </div>
           {marathonScore !== null ? (
-            <div className="streak active" title="Очки марафона: сумма баллов за точность в 10 ситуациях (до 100 за ситуацию).">
+            <div className="streak active" title="Очки марафона зависят от итоговой оценки каждой ситуации (до 100 за ситуацию).">
               <span>{marathonScore}</span>
               <small>очки марафона</small>
             </div>
@@ -1710,7 +1710,7 @@ export function App() {
                   ? shownFeedback.summary
                   : "Смотрим удар..."
                 : customSession?.kind === "marathon"
-                  ? `Марафон: 10 случайных ситуаций без подсказок. За точность даются очки - сейчас у тебя ${marathonScore ?? 0}.`
+                  ? `Марафон: 10 случайных ситуаций без подсказок. За каждую оценку даются очки - сейчас у тебя ${marathonScore ?? 0}.`
                   : isReactionLevel && reactionPhase === "waiting"
                   ? `${activePlayer?.name ?? "Игрок"}, сначала прочитай расстановку. Мяч появится через мгновение.`
                   : `${activePlayer?.name ?? "Игрок"}, выбери позицию до удара.`}
@@ -2285,7 +2285,7 @@ export function App() {
                     </div>
                   )}
                   {kind === "marathon" && (
-                    <p className="session-summary-note">Каждая ситуация дает до 100 очков за точность позиции - максимум 1000 за марафон.</p>
+                      <p className="session-summary-note">Очки зависят от итоговой оценки: до 100 за ситуацию и до 1000 за марафон.</p>
                   )}
                   {kind === "day" && dayStreak && (
                     <div className="summary-row">

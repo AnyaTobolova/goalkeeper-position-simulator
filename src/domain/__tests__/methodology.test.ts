@@ -11,6 +11,37 @@ import { keeperRank } from "../badges";
 
 const pitch7 = pitchPresets["7v7"];
 
+describe("очки и итоговая оценка", () => {
+  it("сохраняет порядок оценок для разных ситуаций и позиций", () => {
+    const ranges = { correct: [85, 100], almost: [60, 84], wrong: [36, 59], dangerous: [0, 35] } as const;
+    const seen = new Set<string>();
+    for (const level of levels) {
+      const pitch = pitchForLevel(level);
+      for (const x of [35, 45, 50, 55, 65]) {
+        for (const y of [0, 3, 8, 15, 25]) {
+          const result = checkAnswer({ x, y }, level, pitch, undefined, recommendedWall(level, pitch));
+          const [min, max] = ranges[result.result];
+          expect(result.score).toBeGreaterThanOrEqual(min);
+          expect(result.score).toBeLessThanOrEqual(max);
+          seen.add(result.result);
+        }
+      }
+    }
+    expect(seen.size).toBe(4);
+  });
+
+  it("не даёт высокий балл опасной позиции при близком центральном штрафном", () => {
+    const level = levelById("free-kick-close-center");
+    const wall = recommendedWall(level, pitch7);
+    const candidates = Array.from({ length: 101 }, (_, x) =>
+      Array.from({ length: 21 }, (_, y) => checkAnswer({ x, y }, level, pitch7, undefined, wall))
+    ).flat();
+    const example = candidates.find((result) => result.result === "dangerous" && result.evaluation.total >= 85);
+    expect(example).toBeDefined();
+    expect(example!.score).toBeLessThanOrEqual(35);
+  });
+});
+
 function levelById(id: string): Level {
   const found = levels.find((item) => item.id === id);
 

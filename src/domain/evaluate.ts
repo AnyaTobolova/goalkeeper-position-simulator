@@ -378,6 +378,14 @@ export function resolveTimeoutResult(checked: CheckResult, goalkeeper: Point, st
 }
 
 export function checkAnswer(goalkeeper: Point, level: Level, pitch: PitchConfig, goalkeeperFacing?: number, wall?: WallConfig): CheckResult {
+  const checked = checkAnswerByCriteria(goalkeeper, level, pitch, goalkeeperFacing, wall);
+  // Очки отражают итоговую оценку, а не только среднюю точность отдельных критериев.
+  const ranges = { correct: [85, 100], almost: [60, 84], wrong: [36, 59], dangerous: [0, 35] } as const;
+  const [min, max] = ranges[checked.result];
+  return { ...checked, score: clamp(checked.score, min, max) };
+}
+
+function checkAnswerByCriteria(goalkeeper: Point, level: Level, pitch: PitchConfig, goalkeeperFacing?: number, wall?: WallConfig): CheckResult {
   const evaluation = evaluateGoalkeeper(goalkeeper, level, pitch, goalkeeperFacing, wall);
   // Белая точка обозначает положение ног. Небольшой допуск нужен для
   // перетаскивания, но заметный выход вперёд до удара недопустим.
