@@ -6,6 +6,7 @@ import { SettingsPanel } from "./components/SettingsPanel";
 import { StatsPanel } from "./components/StatsPanel";
 import { checkAnswer, resolveTimeoutResult } from "./domain/evaluate";
 import { applyExitDecision } from "./domain/exitDecision";
+import { firstAttempts, marathonPoints, type SessionAttempt } from "./domain/sessionSummary";
 import { applyLevelVariation, mirrorLevel } from "./domain/variation";
 import { RulesQuiz } from "./components/RulesQuiz";
 import { PenaltyShootout } from "./components/PenaltyShootout";
@@ -965,7 +966,7 @@ export function App() {
   // Список сценариев фиксируется на момент запуска, чтобы не менялся по ходу.
   const [customSession, setCustomSession] = useState<{ kind: "weak" | "day" | "marathon"; ids: string[] } | null>(null);
   // Журнал текущей сессии для экрана итогов.
-  const [sessionLog, setSessionLog] = useState<{ levelId: string; result: ResultKind; score: number; errorType?: ErrorType }[]>([]);
+  const [sessionLog, setSessionLog] = useState<SessionAttempt[]>([]);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const reactionPaused = !playerSelected || !onboardingComplete || settingsOpen || statsOpen || rulesQuizOpen || shootoutOpen || summaryOpen;
   const [dayStreak, setDayStreak] = useState<DayStreak | null>(null);
@@ -1069,7 +1070,7 @@ export function App() {
   const shownFeedback = analysisRevealed ? feedback : null;
   const visibleFieldLegend = useMemo(() => fieldLegendItems(shownFeedback?.visualHints ?? []), [shownFeedback]);
   const marathonScore = useMemo(
-    () => (customSession?.kind === "marathon" ? sessionLog.reduce((sum, item) => sum + item.score, 0) : null),
+    () => (customSession?.kind === "marathon" ? marathonPoints(sessionLog) : null),
     [customSession, sessionLog]
   );
 
@@ -1289,7 +1290,7 @@ export function App() {
     setReactionTimeLeft(null);
     setProgress(nextProgress);
     setSessionStreak((current) => (finalResult.result === "correct" ? current + 1 : 0));
-    setSessionLog((current) => customSession && current.some((item) => item.levelId === level.id) ? current : [
+    setSessionLog((current) => [
       ...current,
       { levelId: level.id, result: finalResult.result, score: finalResult.score, errorType: finalResult.errorType ?? finalResult.evaluation.mainErrorType }
     ]);
@@ -1409,7 +1410,7 @@ export function App() {
     }
 
     if (customSession?.kind === "marathon" && sessionComplete) {
-      const score = sessionLog.reduce((sum, item) => sum + item.score, 0);
+      const score = marathonPoints(sessionLog);
       saveMarathonBest(activePlayerId, score);
       setMarathonBest(loadMarathonBest(activePlayerId));
     }
@@ -1710,7 +1711,7 @@ export function App() {
                   ? shownFeedback.summary
                   : "Смотрим удар..."
                 : customSession?.kind === "marathon"
-                  ? `Марафон: 10 случайных ситуаций без подсказок. За каждую оценку даются очки - сейчас у тебя ${marathonScore ?? 0}.`
+                  ? `Марафон: 10 случайных ситуаций без подсказок. В зачёт идёт первая попытка. Сейчас у тебя ${marathonScore ?? 0} очков.`
                   : isReactionLevel && reactionPhase === "waiting"
                   ? `${activePlayer?.name ?? "Игрок"}, сначала прочитай расстановку. Мяч появится через мгновение.`
                   : `${activePlayer?.name ?? "Игрок"}, выбери позицию до удара.`}
@@ -2228,7 +2229,7 @@ export function App() {
       {summaryOpen &&
         (() => {
           const total = sessionLog.length;
-          const uniqueSituations = new Set(sessionLog.map((item) => item.levelId)).size;
+          const uniqueSituations = firstAttempts(sessionLog).length;
           const allAttempts = Object.values(progress).reduce((sum, item) => sum + item.attempts, 0);
           const excellent = sessionLog.filter((item) => item.result === "correct").length;
           const errorCounts = new Map<ErrorType, number>();
@@ -2240,7 +2241,7 @@ export function App() {
           });
 
           const topError = [...errorCounts.entries()].sort((a, b) => b[1] - a[1])[0];
-          const marathonScore = sessionLog.reduce((sum, item) => sum + item.score, 0);
+          const marathonScore = marathonPoints(sessionLog);
           const kind = customSession?.kind;
 
           const closeToMenu = () => {
@@ -2279,13 +2280,13 @@ export function App() {
                     <div className="summary-row">
                       <span>Очки марафона</span>
                       <strong>
-                        {sessionLog.reduce((sum, item) => sum + item.score, 0)}
+                        {marathonScore}
                         {marathonBest !== null ? ` (рекорд ${marathonBest})` : ""}
                       </strong>
                     </div>
                   )}
                   {kind === "marathon" && (
-                      <p className="session-summary-note">Очки зависят от итоговой оценки: до 100 за ситуацию и до 1000 за марафон.</p>
+                      <p className="session-summary-note">В зачёт идёт первая попытка каждой ситуации. Повторы учитываются в статистике, но не меняют очки. Максимум — 1000 очков.</p>
                   )}
                   {kind === "day" && dayStreak && (
                     <div className="summary-row">
