@@ -6,6 +6,7 @@ import { openGoalSegments } from "../openGoalSegments";
 import { buildPositionZones } from "../positionZones";
 import { pitchPresets } from "../presets";
 import { shotExample } from "../shotExample";
+import { applyLevelVariation } from "../variation";
 
 describe("Пример удара в разборе", () => {
   it("показывает сейв при отличной позиции для всех сценариев и форматов", () => {
@@ -18,12 +19,26 @@ describe("Пример удара в разборе", () => {
     }
   });
 
+  it("не показывает гол при «Почти» во всех сценариях, форматах и вариантах", () => {
+    for (const pitch of Object.values(pitchPresets)) {
+      for (const baseLevel of levels) {
+        for (let attempt = 0; attempt <= 20; attempt++) {
+          const level = applyLevelVariation(baseLevel, attempt);
+          const point = fromMeters(buildPositionZones(level, pitch).ideal, pitch);
+          const checked = checkAnswer(point, level, pitch);
+          const result = { ...checked, result: "almost" as const };
+          expect(shotExample(result, level, point, pitch)?.isGoal).toBe(false);
+        }
+      }
+    }
+  });
+
   it("показывает гол при ошибке только в открытый по схеме участок", () => {
     const pitch = pitchPresets["7v7"];
     const level = levels.find((item) => item.id === "angle-right-half")!;
     const point = { x: 40, y: 2 };
     const result = checkAnswer(point, level, pitch);
-    expect(result.result).not.toBe("correct");
+    expect(["wrong", "dangerous"]).toContain(result.result);
     const example = shotExample(result, level, point, pitch)!;
     expect(example.isGoal).toBe(true);
     const target = toMeters(example.target, pitch);
@@ -36,7 +51,7 @@ describe("Пример удара в разборе", () => {
     const level = levels.find((item) => item.id === "angle-right-half")!;
     const point = { x: level.ball.x, y: level.ball.y - 1 };
     const result = checkAnswer(point, level, pitch);
-    expect(result.result).not.toBe("correct");
+    expect(["wrong", "dangerous"]).toContain(result.result);
     expect(shotExample(result, level, point, pitch)).toBeNull();
   });
 });

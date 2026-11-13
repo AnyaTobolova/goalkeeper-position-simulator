@@ -4,7 +4,7 @@ import type { CheckResult, Level, PitchConfig, Point, WallConfig } from "./types
 
 // Наглядный пример удара по плоской схеме, а не прогноз исхода или оценка ответа.
 export function shotExample(result: CheckResult, level: Level, goalkeeper: Point, pitch: PitchConfig, wall?: WallConfig) {
-  if (result.result === "correct") return { isGoal: false, target: goalkeeper };
+  if (result.result === "correct" || result.result === "almost") return { isGoal: false, target: goalkeeper };
   const ball = toMeters(level.ball, pitch);
   const keeper = toMeters(goalkeeper, pitch);
   const segments = level.freeKick && wall

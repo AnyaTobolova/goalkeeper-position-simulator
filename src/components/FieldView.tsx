@@ -330,9 +330,10 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
     };
   }
   const positionZones = result ? buildPositionZones(level, pitch) : null;
-  const footInsideTarget = result && positionZones
-    ? classifyLocalPosition(toLocal(toMeters(goalkeeper, pitch), positionZones.center, positionZones.axes), positionZones.cfg, !result.evaluation.outsideShotAngle).status === "correct"
-    : true;
+  const footStatus = result && positionZones
+    ? classifyLocalPosition(toLocal(toMeters(goalkeeper, pitch), positionZones.center, positionZones.axes), positionZones.cfg, !result.evaluation.outsideShotAngle).status
+    : "correct";
+  const footInsideTarget = footStatus === "correct" || footStatus === "almost";
   const box = pitch.markings;
   const goalSvgX = (pitch.fieldWidth / 2 - pitch.goalWidth / 2) * scaleX;
   const goalSvgWidth = pitch.goalWidth * scaleX;
@@ -345,8 +346,16 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
     ? level.players.find((player) => player.id === alternativePlayerId && player.role === "attacker" && !player.hasBall)
     : undefined;
   const alternativePoint = alternativePlayer ? percentToSvg(alternativePlayer) : null;
-  const importantY = [ball.y, keeperSvg.y, ...(wallSvg ? [wallSvg.y] : []), ...playerSvgPoints.map((point) => point.y)];
-  const importantX = [goalSvgX, goalSvgX + goalSvgWidth, ball.x, keeperSvg.x, ...(wallSvg ? [wallSvg.x] : []), ...playerSvgPoints.map((point) => point.x)];
+  const markingWidths = [
+    ...(box.hasGoalArea && box.goalAreaWidth ? [box.goalAreaWidth] : []),
+    ...(box.hasPenaltyArea && box.penaltyAreaWidth ? [box.penaltyAreaWidth] : [])
+  ];
+  const markingDepths = [
+    ...(box.hasGoalArea && box.goalAreaDepth ? [box.goalAreaDepth] : []),
+    ...(box.hasPenaltyArea && box.penaltyAreaDepth ? [box.penaltyAreaDepth] : [])
+  ];
+  const importantY = [ball.y, keeperSvg.y, ...markingDepths.map((depth) => fieldHeight - depth * scaleY), ...(wallSvg ? [wallSvg.y] : []), ...playerSvgPoints.map((point) => point.y)];
+  const importantX = [goalSvgX, goalSvgX + goalSvgWidth, ball.x, keeperSvg.x, ...markingWidths.flatMap((width) => [(pitch.fieldWidth / 2 - width / 2) * scaleX, (pitch.fieldWidth / 2 + width / 2) * scaleX]), ...(wallSvg ? [wallSvg.x] : []), ...playerSvgPoints.map((point) => point.x)];
   const minViewBoxWidth = compactField ? 46 : 56;
   const focusPadding = compactField ? 8 : 12;
   const rawFocusLeft = Math.min(...importantX) - focusPadding;

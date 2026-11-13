@@ -388,6 +388,18 @@ describe("решение на подаче", () => {
 });
 
 describe("методический инвариант: идеальная точка каждого уровня дает «Отлично»", () => {
+  it("сохраняется для вариаций всех уровней во всех игровых форматах", () => {
+    for (const configuredPitch of Object.values(pitchPresets).filter((item) => item.presetId !== "custom")) {
+      for (const baseLevel of levels) {
+        for (let attempt = 0; attempt <= 20; attempt++) {
+          const level = applyLevelVariation(baseLevel, attempt);
+          const pitch = level.pitchPresetOverride ? pitchPresets[level.pitchPresetOverride] : configuredPitch;
+          const result = checkAnswer(idealPercent(level, pitch), level, pitch, undefined, recommendedWall(level, pitch));
+          expect(result.result, `${level.id}, ${pitch.presetId}, вариант ${attempt}`).toBe("correct");
+        }
+      }
+    }
+  });
   for (const level of levels) {
     it(level.id, () => {
       const pitch = pitchForLevel(level);
