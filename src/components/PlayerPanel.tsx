@@ -38,7 +38,7 @@ export function PlayerPanel({
         </button>
       </div>
 
-      <button className="danger-button" type="button" onClick={onDeletePlayer} disabled={players.length <= 1}>
+      <button className="danger-button" type="button" onClick={onDeletePlayer}>
         <Trash2 size={18} />
         <span>Удалить игрока</span>
       </button>

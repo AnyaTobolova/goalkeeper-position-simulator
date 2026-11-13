@@ -252,7 +252,9 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
       return null;
     }
 
-    const { isGoal, target: exampleTarget } = shotExample(level, goalkeeper, pitch, wall);
+    const example = shotExample(result, level, goalkeeper, pitch, wall);
+    if (!example) return null;
+    const { isGoal, target: exampleTarget } = example;
 
     if (isGoal) {
       const target = percentToSvg(exampleTarget);

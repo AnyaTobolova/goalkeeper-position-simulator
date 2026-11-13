@@ -34,7 +34,7 @@ import {
   loadReactionTimeSeconds,
   loadShowDimensions,
   loadTrainingMode,
-  deletePlayerLastLevelIndex,
+  deletePlayerData,
   deletePlayerProgress,
   saveActivePlayerId,
   saveOnboardingComplete,
@@ -236,19 +236,6 @@ function criteriaLegendItems(criteria: { status: string }[]) {
     (statuses.has("almost") || statuses.has("bad")) && { kind: "almost", text: "поправить" },
     statuses.has("dangerous") && { kind: "danger", text: "опасно" }
   ].filter(Boolean) as { kind: string; text: string }[];
-}
-
-function getNextLevelIndex(currentIndex: number, progress: Progress, trainingLevels: Level[]) {
-  const repeatIndex = trainingLevels.findIndex((level, index) => {
-    const item = progress[level.id];
-    return index !== currentIndex && item?.needsRepeat && item.correctStreak < 2;
-  });
-
-  if (repeatIndex >= 0 && Math.random() < 0.35) {
-    return repeatIndex;
-  }
-
-  return (currentIndex + 1) % trainingLevels.length;
 }
 
 function emptyLevelProgress() {
@@ -1295,7 +1282,8 @@ export function App() {
     const nextProgress = updateProgress(progress, level, finalResult);
     const earnedBadges = newlyEarnedBadges(computeBadges(progress, levels, penaltyBest), computeBadges(nextProgress, levels, penaltyBest));
 
-    setAnalysisRevealed(!finalResult.evaluation.openShotTarget);
+    const example = finalResult.evaluation.openShotTarget ? shotExample(finalResult, level, goalkeeper, activePitch, level.freeKick ? wall : undefined) : null;
+    setAnalysisRevealed(!example);
     setResult(finalResult);
     setWhyVisible(false);
     setReactionTimeLeft(null);
@@ -1307,9 +1295,9 @@ export function App() {
     ]);
 
     // Удар в момент старта полета мяча, звук результата - когда мяч долетел.
-    if (finalResult.evaluation.openShotTarget) {
+    if (example) {
       playKick(0.38);
-      playShotOutcome(shotExample(level, goalkeeper, activePitch, level.freeKick ? wall : undefined).isGoal, 1.05);
+      playShotOutcome(example.isGoal, 1.05);
     } else {
       playResult(finalResult.result, 0.15);
     }
@@ -1403,8 +1391,11 @@ export function App() {
       return;
     }
 
-    const nextIndex = getNextLevelIndex(levelIndex, progress, trainingLevels);
-    moveToLevel(nextIndex);
+    if (levelIndex >= trainingLevels.length - 1) {
+      finishSession();
+      return;
+    }
+    moveToLevel(levelIndex + 1);
   }
 
   function finishSession() {
@@ -1497,14 +1488,16 @@ export function App() {
   }
 
   function deleteActivePlayer() {
-    if (players.length <= 1) {
+    const name = players.find((player) => player.id === activePlayerId)?.name ?? "игрока";
+    const lastPlayerNote = players.length === 1 ? " Будет создан новый пустой профиль." : "";
+    if (!window.confirm(`Удалить игрока «${name}» и все его результаты на этом устройстве? Это нельзя отменить.${lastPlayerNote}`)) {
       return;
     }
 
-    const nextPlayers = players.filter((player) => player.id !== activePlayerId);
+    const remaining = players.filter((player) => player.id !== activePlayerId);
+    const nextPlayers = remaining.length ? remaining : [createPlayer("Игрок 1")];
     const nextPlayerId = nextPlayers[0].id;
-    deletePlayerProgress(activePlayerId);
-    deletePlayerLastLevelIndex(activePlayerId);
+    deletePlayerData(activePlayerId);
     setPlayers(nextPlayers);
     setActivePlayerId(nextPlayerId);
     setNewPlayerName("");
@@ -1722,7 +1715,7 @@ export function App() {
                   ? `${activePlayer?.name ?? "Игрок"}, сначала прочитай расстановку. Мяч появится через мгновение.`
                   : `${activePlayer?.name ?? "Игрок"}, выбери позицию до удара.`}
             </p>
-            {shownFeedback && result?.evaluation.openShotTarget && (
+            {shownFeedback && result?.evaluation.openShotTarget && shotExample(result, level, goalkeeper, activePitch, level.freeKick ? wall : undefined) && (
               <p className="session-summary-note">Это пример удара по условной схеме, а не прогноз. Оценка позиции показана отдельно.</p>
             )}
             {shownFeedback && alternativeAttackers.length > 0 && ["one_v_one", "pass_reposition", "defender_pressure"].includes(level.category) && (
@@ -2030,6 +2023,7 @@ export function App() {
                 <label className="menu-label">Выбрать игрока
                   <select value={activePlayerId} onChange={(event) => setActivePlayerId(event.target.value)}>{players.map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}</select>
                 </label>
+                <button className="menu-delete-player" type="button" onClick={deleteActivePlayer}>Удалить выбранного игрока</button>
                 <div className="menu-add-player"><label className="menu-label" htmlFor="menu-new-player">Новый игрок</label><div className="add-player-row"><input id="menu-new-player" value={newPlayerName} type="text" placeholder="Имя игрока" maxLength={24} onChange={(event) => setNewPlayerName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addPlayer(); }} /><button type="button" onClick={addPlayer} disabled={!newPlayerName.trim()}>Добавить</button></div><small>Новый игрок получит свой прогресс.</small></div>
                 <button className="primary menu-next" type="button" onClick={() => setMenuStep("pitch")}>Это я <ChevronRight size={18} /></button>
               </>}

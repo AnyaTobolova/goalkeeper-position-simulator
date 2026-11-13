@@ -115,6 +115,14 @@ export function deletePlayerLastLevelIndex(playerId: string) {
   localStorage.removeItem(playerLastLevelKey(playerId, "reaction_to_ball_owner"));
 }
 
+export function deletePlayerData(playerId: string) {
+  deletePlayerProgress(playerId);
+  deletePlayerLastLevelIndex(playerId);
+  localStorage.removeItem(`goalkeeper-sim:penalty-best:${playerId}`);
+  localStorage.removeItem(`goalkeeper-sim:day-streak:${playerId}`);
+  localStorage.removeItem(`goalkeeper-sim:marathon-best:${playerId}`);
+}
+
 export function loadPitch(): PitchConfig {
   try {
     const saved = localStorage.getItem(pitchKey);
