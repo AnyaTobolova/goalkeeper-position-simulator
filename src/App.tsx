@@ -37,6 +37,8 @@ import {
   loadTrainingMode,
   deletePlayerData,
   deletePlayerProgress,
+  parseProgressExport,
+  replaceGameData,
   saveActivePlayerId,
   saveOnboardingComplete,
   savePitch,
@@ -1341,26 +1343,15 @@ export function App() {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const parsed = JSON.parse(String(reader.result)) as { app?: string; entries?: Record<string, string> };
+        const entries = parseProgressExport(JSON.parse(String(reader.result)));
 
-        if (parsed.app !== "goalkeeper-sim" || !parsed.entries || typeof parsed.entries !== "object") {
-          window.alert("Это не файл прогресса игры.");
+        if (!window.confirm("Загрузка заменит все данные игры на этом устройстве: игроков, прогресс, рекорды и настройки. Данные, которых нет в файле, будут удалены. Продолжить?")) {
           return;
         }
-
-        if (!window.confirm("Загрузка файла заменит текущий прогресс на этом устройстве. Продолжить?")) {
-          return;
-        }
-
-        Object.entries(parsed.entries).forEach(([key, value]) => {
-          if (key.startsWith("goalkeeper-sim:") && typeof value === "string") {
-            localStorage.setItem(key, value);
-          }
-        });
-
+        replaceGameData(entries);
         window.location.reload();
       } catch {
-        window.alert("Не удалось прочитать файл прогресса.");
+        window.alert("Не удалось загрузить данные. Проверь файл и свободное место на устройстве.");
       }
     };
     reader.readAsText(file);
@@ -1521,6 +1512,8 @@ export function App() {
   }
 
   function clearStatsPlayerProgress(playerId: string) {
+    const playerName = players.find((player) => player.id === playerId)?.name ?? "игрока";
+    if (!window.confirm(`Очистить историю ответов и закрепление ситуаций игрока «${playerName}»? Рекорды, серия дней, место в программе и настройки сохранятся. Отменить очистку нельзя.`)) return;
     deletePlayerProgress(playerId);
 
     if (playerId === activePlayerId) {

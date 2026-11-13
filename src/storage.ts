@@ -10,6 +10,33 @@ const onboardingKey = "goalkeeper-sim:onboarding-complete";
 const reactionDifficultyKey = "goalkeeper-sim:reaction-difficulty";
 const reactionTimeSecondsKey = "goalkeeper-sim:reaction-time-seconds";
 const trainingModeKey = "goalkeeper-sim:training-mode";
+const appKeyPrefix = "goalkeeper-sim:";
+
+export function parseProgressExport(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Неверный файл");
+  const payload = value as { app?: unknown; entries?: unknown };
+  if (payload.app !== "goalkeeper-sim" || !payload.entries || typeof payload.entries !== "object" || Array.isArray(payload.entries)) throw new Error("Неверный файл");
+  const entries = Object.entries(payload.entries);
+  if (!entries.length || entries.some(([key, item]) => !key.startsWith(appKeyPrefix) || typeof item !== "string")) throw new Error("Неверные данные");
+  return Object.fromEntries(entries) as Record<string, string>;
+}
+
+export function replaceGameData(entries: Record<string, string>, storage: Storage = localStorage) {
+  const original: Record<string, string> = {};
+  for (let i = 0; i < storage.length; i++) {
+    const key = storage.key(i);
+    if (key?.startsWith(appKeyPrefix)) original[key] = storage.getItem(key) ?? "";
+  }
+  try {
+    // Сначала освобождаем место, затем записываем новый комплект.
+    Object.keys(original).forEach((key) => storage.removeItem(key));
+    Object.entries(entries).forEach(([key, value]) => storage.setItem(key, value));
+  } catch (error) {
+    Object.keys(entries).forEach((key) => storage.removeItem(key));
+    Object.entries(original).forEach(([key, value]) => storage.setItem(key, value));
+    throw error;
+  }
+}
 
 function createDefaultPlayer(): PlayerProfile {
   return {
