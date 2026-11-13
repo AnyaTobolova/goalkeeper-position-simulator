@@ -67,9 +67,14 @@ function zoneCenter(zone: Zone): Point {
 // правилами расстоянии от мяча (радиус дуги штрафной = 9,15 м у взрослых,
 // меньше в детских форматах). Зона считается от геометрии, а не задается
 // вручную, поэтому не зависит от выбранного пресета поля.
-export function freeKickWallZone(ballMeters: Point, pitch: PitchConfig): Zone {
+export function freeKickWallZone(ballMeters: Point, pitch: PitchConfig, keeperTargetSide?: number): Zone {
   const center = goalCenter(pitch);
-  const nearPostPoint = ballMeters.x >= center.x ? rightPost(pitch) : leftPost(pitch);
+  // При мяче точно по центру ближней штанги нет: стенка занимает сторону
+  // напротив выбранной в сценарии позиции вратаря.
+  const useRightPost = Math.abs(ballMeters.x - center.x) < 0.000001
+    ? (keeperTargetSide ?? -1) <= 0
+    : ballMeters.x > center.x;
+  const nearPostPoint = useRightPost ? rightPost(pitch) : leftPost(pitch);
   const toPost = { x: nearPostPoint.x - ballMeters.x, y: nearPostPoint.y - ballMeters.y };
   const len = Math.max(0.1, Math.hypot(toPost.x, toPost.y));
   const legalDistance = pitch.freeKickDistance ?? pitch.markings.penaltyArcRadius ?? 9.15;
@@ -255,7 +260,7 @@ export function evaluateGoalkeeper(
   if (level.freeKick) {
     const selectedWall = wall ?? level.freeKick.initialWall;
     const countDiff = Math.abs(selectedWall.count - level.freeKick.recommendedWallCount);
-    const targetWallZone = freeKickWallZone(ball, pitch);
+    const targetWallZone = freeKickWallZone(ball, pitch, level.goalTarget?.side);
     resolvedWallZone = targetWallZone;
     const targetWallCenter = zoneCenter(targetWallZone);
     const selectedWallPoint = toMeters(selectedWall, pitch);

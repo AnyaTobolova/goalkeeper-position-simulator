@@ -158,6 +158,14 @@ export function playKick(delaySeconds = 0) {
   playSequence([{ frequency: 150, duration: 0.1, glideTo: 60, volume: 0.5, type: "sine" }], delaySeconds);
 }
 
+// Звук относится к показанному удару, а не к оценке задания.
+export function playShotOutcome(isGoal: boolean, delaySeconds = 0) {
+  const ctx = context();
+  if (!ctx) return;
+  clap(ctx.currentTime + delaySeconds, isGoal ? 700 : 1200, isGoal ? 0.18 : 0.25);
+  playSequence([{ frequency: isGoal ? 160 : 220, glideTo: isGoal ? 95 : 120, duration: 0.16, volume: 0.22, type: "sine" }], delaySeconds);
+}
+
 export function playResult(kind: ResultKind, delaySeconds = 0) {
   if (kind === "correct") {
     // Сейв: победная фанфара (выбранный вариант).

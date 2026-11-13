@@ -3563,6 +3563,42 @@ input:focus {
   .menu-welcome { padding: 12px; }
 }
 
+/* Компактное меню без закреплённого заголовка и горизонтальной прокрутки. */
+.start-modal { overflow-x: hidden; }
+.start-modal .modal-header { position: static; min-width: 0; }
+.start-modal .modal-header > div:first-child, .start-body, .start-section, .start-primary-row, .mode-grid, .menu-selection { min-width: 0; }
+.menu-header-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.start-primary-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.start-primary-row button, .mode-grid button { width: 100%; min-width: 0; }
+.start-primary-row button { min-height: 52px; font-size: 14px; }
+.start-mode-choice { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0; }
+.start-mode-choice button { min-width: 0; min-height: 62px; }
+.mode-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.records-line, .menu-selection { overflow-wrap: anywhere; }
+.menu-back { min-height: 32px; padding: 2px 0; }
+.menu-back-links { display: flex; justify-content: space-between; gap: 8px; }
+@media (max-width: 480px) {
+  .start-modal .modal-header h2 { font-size: 20px; line-height: 1.2; }
+  .menu-welcome strong { font-size: 19px; }
+  .menu-welcome span, .menu-label, .menu-intro { font-size: 13px; }
+  .menu-welcome small, .menu-add-player small { font-size: 12px; }
+  .start-modal .start-body { gap: 10px; }
+  .start-modal .start-section { padding: 9px; }
+  .start-primary-row button { padding: 7px 5px; font-size: 13px; }
+  .start-primary-row button svg { flex-shrink: 0; }
+  .mobile-action-bar { grid-template-columns: minmax(0, 1fr) 78px 70px; }
+  .mobile-action-bar.after-result { grid-template-columns: minmax(0, 1fr) 70px; }
+  .mobile-action-bar .secondary { min-width: 0; padding: 0 3px; font-size: 11px; }
+}
+@media (max-width: 350px) {
+  .start-primary-row button svg { display: none; }
+  .start-primary-row button { font-size: 12px; }
+  .menu-progress { font-size: 10px; }
+  .mobile-action-bar { grid-template-columns: minmax(0, 1fr) 52px 52px; }
+  .mobile-action-bar.after-result { grid-template-columns: minmax(0, 1fr) 52px; }
+  .mobile-action-bar .secondary span { display: none; }
+}
+
 .correction-actions {
   display: flex;
   flex-wrap: wrap;
@@ -3584,7 +3620,31 @@ input:focus {
 
 .open-goal-segment {
   stroke: #ff9944;
-  stroke-width: 1.6;
+  stroke-width: 0.65;
   stroke-linecap: butt;
   pointer-events: none;
+}
+
+.alternative-shot-lines {
+  fill: none;
+  stroke: #82d9ff;
+  stroke-width: 0.35;
+  stroke-dasharray: 1.2 0.8;
+  pointer-events: none;
+}
+
+.alternative-pass {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #426b91;
+  border-radius: 10px;
+}
+
+.alternative-pass p {
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+
+.alternative-pass button {
+  margin: 4px 8px 0 0;
 }

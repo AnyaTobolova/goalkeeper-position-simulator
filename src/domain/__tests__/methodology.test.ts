@@ -34,7 +34,7 @@ function recommendedWall(level: Level, pitch: PitchConfig): WallConfig | undefin
     return undefined;
   }
 
-  const zone = freeKickWallZone(toMeters(level.ball, pitch), pitch);
+  const zone = freeKickWallZone(toMeters(level.ball, pitch), pitch, level.goalTarget?.side);
 
   return {
     count: level.freeKick.recommendedWallCount,
@@ -56,6 +56,24 @@ describe("линия мяча и боковое смещение", () => {
     const result = checkAnswer(idealPercent(level, pitch7), level, pitch7);
 
     expect(result.result).toBe("correct");
+  });
+});
+
+describe("зеркальный центральный штрафной", () => {
+  it("одинаково оценивает отражённые позиции вратаря и стенки для всех форматов", () => {
+    for (const pitch of Object.values(pitchPresets)) {
+      for (const id of ["free-kick-center", "free-kick-close-center"]) {
+        const level = levelById(id);
+        const mirrored = mirrorLevel(level);
+        const keeper = idealPercent(level, pitch);
+        const wall = recommendedWall(level, pitch)!;
+        const mirroredWall = { ...wall, x: 100 - wall.x };
+        const zone = freeKickWallZone(toMeters(mirrored.ball, pitch), pitch, mirrored.goalTarget?.side);
+        expect(mirroredWall.x).toBeCloseTo((zone.xMin + zone.xMax) / 2, 8);
+        expect(checkAnswer(keeper, level, pitch, undefined, wall).result)
+          .toBe(checkAnswer({ ...keeper, x: 100 - keeper.x }, mirrored, pitch, undefined, mirroredWall).result);
+      }
+    }
   });
 });
 

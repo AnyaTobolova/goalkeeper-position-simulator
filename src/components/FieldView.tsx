@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CheckResult, Level, OrientedZone, PitchConfig, Point, VisualHint, WallConfig, Zone } from "../domain/types";
 import { fromMeters, goalCenter, leftPost, rightPost, toMeters } from "../domain/geometry";
 import { openGoalSegments, openGoalSegmentsWithWall } from "../domain/openGoalSegments";
+import { buildPositionZones, classifyLocalPosition, toLocal } from "../domain/positionZones";
+import { shotExample } from "../domain/shotExample";
 
 type FieldViewProps = {
   pitch: PitchConfig;
@@ -12,6 +14,7 @@ type FieldViewProps = {
   showDimensions: boolean;
   visualHints: VisualHint[];
   showOpenGoal: boolean;
+  alternativePlayerId?: string | null;
   hideBall?: boolean;
   wall?: WallConfig;
   onGoalkeeperChange: (point: Point) => void;
@@ -206,7 +209,7 @@ function WallFigure({ x, y, count, scale }: { x: number; y: number; count: numbe
   );
 }
 
-export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, showDimensions, visualHints, showOpenGoal, hideBall = false, wall, onGoalkeeperChange, onGoalkeeperFacingChange, onWallChange }: FieldViewProps) {
+export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, showDimensions, visualHints, showOpenGoal, alternativePlayerId, hideBall = false, wall, onGoalkeeperChange, onGoalkeeperFacingChange, onWallChange }: FieldViewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const shotAngleClipId = useRef(`shot-angle-clip-${Math.random().toString(36).slice(2)}`).current;
   const wallDistanceMaskId = useRef(`wall-distance-mask-${Math.random().toString(36).slice(2)}`).current;
@@ -242,18 +245,17 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
         ? openGoalSegments(meterBall, toMeters(goalkeeper, pitch), pitch)
         : []
     : [];
-  // Удар с исходом: после оценки мяч летит в самую открытую часть ворот (гол)
-  // или во вратаря (сейв). Только для сценариев с прямым ударом.
+  // Пример удара независим от оценки ответа.
   const [shotProgress, setShotProgress] = useState(0);
   const shotOutcome = (() => {
     if (!result || hideBall || !result.evaluation.openShotTarget) {
       return null;
     }
 
-    const isGoal = result.result === "wrong" || result.result === "dangerous";
+    const { isGoal, target: exampleTarget } = shotExample(level, goalkeeper, pitch, wall);
 
     if (isGoal) {
-      const target = percentToSvg(result.evaluation.openShotTarget);
+      const target = percentToSvg(exampleTarget);
       return { isGoal, target: { x: target.x, y: target.y + 2.2 } };
     }
 
@@ -325,7 +327,10 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
       dy: 4 + (Math.abs(hash >> 3) % 5) * 1.4
     };
   }
-  const footInsideTarget = result ? result.result === "correct" : true;
+  const positionZones = result ? buildPositionZones(level, pitch) : null;
+  const footInsideTarget = result && positionZones
+    ? classifyLocalPosition(toLocal(toMeters(goalkeeper, pitch), positionZones.center, positionZones.axes), positionZones.cfg, !result.evaluation.outsideShotAngle).status === "correct"
+    : true;
   const box = pitch.markings;
   const goalSvgX = (pitch.fieldWidth / 2 - pitch.goalWidth / 2) * scaleX;
   const goalSvgWidth = pitch.goalWidth * scaleX;
@@ -334,6 +339,10 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
   // Глубина сетки у земли реалистична при ~0.36 от ширины ворот (а не почти в ширину).
   const goalDepth = Math.max(3, Math.min(8, goalSvgWidth * 0.36));
   const playerSvgPoints = level.players.map((player) => percentToSvg(player));
+  const alternativePlayer = result && alternativePlayerId
+    ? level.players.find((player) => player.id === alternativePlayerId && player.role === "attacker" && !player.hasBall)
+    : undefined;
+  const alternativePoint = alternativePlayer ? percentToSvg(alternativePlayer) : null;
   const importantY = [ball.y, keeperSvg.y, ...(wallSvg ? [wallSvg.y] : []), ...playerSvgPoints.map((point) => point.y)];
   const importantX = [goalSvgX, goalSvgX + goalSvgWidth, ball.x, keeperSvg.x, ...(wallSvg ? [wallSvg.x] : []), ...playerSvgPoints.map((point) => point.x)];
   const minViewBoxWidth = compactField ? 46 : 56;
@@ -626,6 +635,13 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
 
         {result && (
           <>
+            {alternativePoint && (
+              <g className="alternative-shot-lines">
+                <line x1={alternativePoint.x} y1={alternativePoint.y} x2={leftSvg.x} y2={leftSvg.y} />
+                <line x1={alternativePoint.x} y1={alternativePoint.y} x2={rightSvg.x} y2={rightSvg.y} />
+                <circle cx={alternativePoint.x} cy={alternativePoint.y} r="1.3" />
+              </g>
+            )}
             {showShotAngle && <polygon className="shot-angle" points={`${ball.x},${ball.y} ${leftSvg.x},${leftSvg.y} ${rightSvg.x},${rightSvg.y}`} />}
             {hasHint("BALL_TO_GOAL_LINE") && <line className="analysis-line" x1={ball.x} y1={ball.y} x2={centerSvg.x} y2={centerSvg.y} />}
             {showShotAngle && (
@@ -708,7 +724,7 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
         )}
 
         {!hideBall && (
-          <g className="ball" transform={`translate(${ballRender.x} ${ballRender.y}) scale(${compactField ? 1.18 : 1})`}>
+          <g className="ball" transform={`translate(${ballRender.x} ${ballRender.y}) scale(${compactField ? 0.68 : 0.6})`}>
             <circle className="ball-base" cx="0" cy="0" r="1.28" />
             <path className="ball-patch" d="M 0 -0.7 L 0.66 -0.2 L 0.42 0.6 L -0.42 0.6 L -0.66 -0.2 Z" />
             <path className="ball-stitch" d="M 0 -0.7 L 0 -1.2 M 0.66 -0.2 L 1.16 -0.38 M 0.42 0.6 L 0.74 1.04 M -0.42 0.6 L -0.74 1.04 M -0.66 -0.2 L -1.16 -0.38" />
@@ -757,8 +773,8 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
           shotProgress >= 1 &&
           (() => {
             // Надпись живет под воротами, за пределами поля - там она ничего не закрывает.
-            const labelText = shotOutcome.isGoal ? "мяч в открытый угол" : "сейв";
-            const labelWidth = Math.max("Пример удара:".length, labelText.length) * 2.05 + 6;
+            const labelText = shotOutcome.isGoal ? "Гол" : "Сейв";
+            const labelWidth = 20;
             const labelX = Math.min(
               Math.max(goalSvgX + goalSvgWidth / 2, focusLeft + labelWidth / 2 + 1),
               focusLeft + focusWidth - labelWidth / 2 - 1
@@ -767,11 +783,8 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
 
             return (
               <g className={`shot-label-group ${shotOutcome.isGoal ? "goal" : "save"}`}>
-                <rect x={labelX - labelWidth / 2} y={labelY - 5.8} width={labelWidth} height={9.6} rx="1.8" />
-                <text x={labelX} y={labelY - 2} textAnchor="middle">
-                  <tspan x={labelX}>Пример удара:</tspan>
-                  <tspan x={labelX} dy="3.7">{labelText}</tspan>
-                </text>
+                <rect x={labelX - labelWidth / 2} y={labelY - 4.8} width={labelWidth} height={6} rx="1.8" />
+                <text x={labelX} y={labelY - 0.8} textAnchor="middle">{labelText}</text>
               </g>
             );
           })()}

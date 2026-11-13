@@ -7,6 +7,14 @@ import { buildPositionZones } from "../positionZones";
 import { pitchPresets } from "../presets";
 
 describe("Достоверность подсказок", () => {
+  it("не сообщает о сокращённом угле, когда выход оценён как слишком глубокий", () => {
+    const level = levels.find((item) => item.id === "two-attackers-center")!;
+    const result = checkAnswer(level.initialGoalkeeper, level, pitchPresets["7v7"]);
+    const criterion = buildFeedback(result, level).criteria.find((item) => item.key === "controlledExit");
+    expect(criterion?.status).not.toBe("good");
+    expect(criterion?.text).not.toContain("сокращён");
+  });
+
   it.each(["corner", "cross"] as const)("не выдумывает траекторию и проверку обзора: %s", (category) => {
     const level = levels.find((item) => item.category === category)!;
     const pitch = pitchPresets["7v7"];

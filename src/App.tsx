@@ -10,7 +10,8 @@ import { applyLevelVariation, mirrorLevel } from "./domain/variation";
 import { RulesQuiz } from "./components/RulesQuiz";
 import { PenaltyShootout } from "./components/PenaltyShootout";
 import { computeBadges, isScenarioMastered, keeperRank, newlyEarnedBadges, type BadgeState } from "./domain/badges";
-import { isSoundOn, playBadge, playKick, playResult, playWhistle, setSoundOn } from "./sounds";
+import { isSoundOn, playBadge, playKick, playResult, playShotOutcome, playWhistle, setSoundOn } from "./sounds";
+import { shotExample } from "./domain/shotExample";
 import { buildFeedback, criterionStatusText } from "./domain/feedback";
 import { facingAngleToBall, normalizeAngle } from "./domain/geometry";
 import { levels } from "./domain/levels";
@@ -74,7 +75,7 @@ function OnboardingVisual({ visual }: { visual: string }) {
         <rect className="lesson-grass" width="160" height="92" />
         <rect className="lesson-stripe" y="18" width="160" height="18" />
         <rect className="lesson-stripe" y="54" width="160" height="18" />
-        <path className="line" d="M 36 75 L 36 53 L 124 53 L 124 75" />
+        <path className="line" d="M 5 75 H 155 M 20 75 V 43 H 140 V 75 M 36 75 V 53 H 124 V 75" />
         <path d="M 62 75 L 62 84 L 98 84 L 98 75 M 62 78 L 98 78 M 62 81 L 98 81 M 68 75 L 68 84 M 74 75 L 74 84 M 80 75 L 80 84 M 86 75 L 86 84 M 92 75 L 92 84" fill="none" stroke="white" strokeWidth="0.5" opacity="0.65" />
         <path d="M 62 75 L 98 75" fill="none" stroke="white" strokeWidth="1.5" />
         <image href="/sprites/attacker-child-red-front.png" x={ballOnly ? 56 : 39} y={ballOnly ? 3 : 4} width="28" height="28" />
@@ -954,6 +955,7 @@ export function App() {
   // Сначала летит мяч и виден исход (гол/сейв), и только затем появляются
   // зоны, вердикт и разбор - как в настоящем эпизоде.
   const [analysisRevealed, setAnalysisRevealed] = useState(true);
+  const [alternativePlayerId, setAlternativePlayerId] = useState<string | null>(null);
   const [badgeToast, setBadgeToast] = useState<BadgeState | null>(null);
   const badgeToastTimerRef = useRef<number | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
@@ -1068,6 +1070,10 @@ export function App() {
       }))
     };
   }, [isReactionLevel, level, reactionActive]);
+  const alternativeAttackers = displayedLevel.players.filter((player) => player.role === "attacker" && !player.hasBall);
+  useEffect(() => {
+    if (!result) setAlternativePlayerId(null);
+  }, [result, level.id]);
   const activePitch = level.pitchPresetOverride ? pitchPresets[level.pitchPresetOverride] : pitch;
   const activePlayer = players.find((player) => player.id === activePlayerId) ?? players[0];
   const savedLevelIndex = Math.min(trainingLevels.length - 1, loadPlayerLastLevelIndex(activePlayerId, trainingMode));
@@ -1245,7 +1251,7 @@ export function App() {
 
   function startTraining(mode: "restart" | "continue") {
     setCustomSession(null);
-    setSessionLog([]);
+    if (mode === "restart" || customSession) setSessionLog([]);
     moveToLevel(mode === "continue" ? savedLevelIndex : 0);
     setPlayerSelected(true);
     setHasEnteredGame(true);
@@ -1303,7 +1309,7 @@ export function App() {
     // Удар в момент старта полета мяча, звук результата - когда мяч долетел.
     if (finalResult.evaluation.openShotTarget) {
       playKick(0.38);
-      playResult(finalResult.result, 1.05);
+      playShotOutcome(shotExample(level, goalkeeper, activePitch, level.freeKick ? wall : undefined).isGoal, 1.05);
     } else {
       playResult(finalResult.result, 0.15);
     }
@@ -1670,6 +1676,7 @@ export function App() {
             showDimensions={showDimensions}
             visualHints={shownFeedback?.visualHints ?? []}
             showOpenGoal={Boolean(shownFeedback)}
+            alternativePlayerId={shownFeedback ? alternativePlayerId : null}
             hideBall={isReactionLevel && !reactionActive}
             wall={level.freeKick ? wall : undefined}
             onGoalkeeperChange={(point) => {
@@ -1716,7 +1723,17 @@ export function App() {
                   : `${activePlayer?.name ?? "Игрок"}, выбери позицию до удара.`}
             </p>
             {shownFeedback && result?.evaluation.openShotTarget && (
-              <p className="session-summary-note">Это один из возможных ударов, а не точный прогноз.</p>
+              <p className="session-summary-note">Это пример удара по условной схеме, а не прогноз. Оценка позиции показана отдельно.</p>
+            )}
+            {shownFeedback && alternativeAttackers.length > 0 && ["one_v_one", "pass_reposition", "defender_pressure"].includes(level.category) && (
+              <div className="alternative-pass">
+                <p>Если последует пас, угол удара изменится. Посмотри линии от другого нападающего и будь готов перестроиться.</p>
+                {alternativeAttackers.map((player, index) => (
+                  <button key={player.id} type="button" aria-pressed={alternativePlayerId === player.id} onClick={() => setAlternativePlayerId(alternativePlayerId === player.id ? null : player.id)}>
+                    {alternativePlayerId === player.id ? "Скрыть линии" : `Линии от игрока ${index + 1}`}
+                  </button>
+                ))}
+              </div>
             )}
             {result && analysisRevealed && level.exitDecision && exitChoice && exitChoice !== level.exitDecision && (
               <p className="decision-note">
@@ -1734,9 +1751,6 @@ export function App() {
                 {result.evaluation.optimalOpenGoalPercent !== undefined && result.evaluation.optimalOpenGoalPercent < (result.evaluation.openGoalPercent ?? 0) && (
                   <span className="open-goal-best">
                     из лучшей точки - {result.evaluation.optimalOpenGoalPercent}%
-                    {(result.evaluation.openGoalPercent ?? 0) - result.evaluation.optimalOpenGoalPercent >= 15
-                      ? " (разница - открытый из-за смещения угол)"
-                      : ""}
                   </span>
                 )}
               </div>
@@ -2002,9 +2016,12 @@ export function App() {
                 <div className="eyebrow">Где стоять вратарю?</div>
                 <h2>{menuStep === "player" ? "Кто сегодня тренируется?" : menuStep === "pitch" ? "Выбери формат игры" : menuStep === "training" ? "Выбери тренировку" : "Данные и установка"}</h2>
               </div>
+              <div className="menu-header-actions">
+              {menuStep !== "player" && <button className="icon-button menu-home" type="button" aria-label="На экран выбора игрока" title="На экран выбора игрока" onClick={() => setMenuStep("player")}><Home size={19} /></button>}
               {hasEnteredGame && <button className="icon-button" type="button" aria-label="Вернуться к тренировке" title="Вернуться к тренировке" onClick={() => setPlayerSelected(true)}>
                 <X size={20} />
               </button>}
+              </div>
             </div>
             <div className="start-body">
               {menuStep !== "data" && <div className="menu-progress" aria-label={`Шаг ${menuStep === "player" ? 1 : menuStep === "pitch" ? 2 : 3} из 3`}><span className={menuStep === "player" ? "active" : ""}>1 Игрок</span><span className={menuStep === "pitch" ? "active" : ""}>2 Формат</span><span className={menuStep === "training" ? "active" : ""}>3 Тренировка</span></div>}
@@ -2085,7 +2102,7 @@ export function App() {
                 )}
               </div>
 
-              <button className="menu-back" type="button" onClick={() => setMenuStep("pitch")}>← Изменить формат</button>
+              <div className="menu-back-links"><button className="menu-back" type="button" onClick={() => setMenuStep("pitch")}>← Формат</button><button className="menu-back" type="button" onClick={() => setMenuStep("player")}>К выбору игрока</button></div>
               </>}
 
               {menuStep === "data" && <div className="start-extra menu-data">
@@ -2118,7 +2135,7 @@ export function App() {
                 )}
                 <button type="button" onClick={() => setMenuStep(dataReturnStep)}>Назад</button>
               </div>}
-              {menuStep !== "data" && <button type="button" className="menu-data-link" onClick={() => { setDataReturnStep(menuStep); setMenuStep("data"); }}>Данные и установка</button>}
+              {menuStep === "player" && <button type="button" className="menu-data-link" onClick={() => { setDataReturnStep("player"); setMenuStep("data"); }}>Данные и установка</button>}
             </div>
           </section>
         </div>
@@ -2217,6 +2234,8 @@ export function App() {
       {summaryOpen &&
         (() => {
           const total = sessionLog.length;
+          const uniqueSituations = new Set(sessionLog.map((item) => item.levelId)).size;
+          const allAttempts = Object.values(progress).reduce((sum, item) => sum + item.attempts, 0);
           const excellent = sessionLog.filter((item) => item.result === "correct").length;
           const errorCounts = new Map<ErrorType, number>();
 
@@ -2251,11 +2270,13 @@ export function App() {
                 </div>
                 <div className="session-summary">
                   <div className="summary-row">
-                    <span>Ситуаций решено</span>
-                    <strong>{total}</strong>
+                    <span>Ситуаций в этой тренировке</span>
+                    <strong>{uniqueSituations}</strong>
                   </div>
+                  <div className="summary-row"><span>Попыток в этой тренировке</span><strong>{total}</strong></div>
+                  <div className="summary-row"><span>Всего попыток игрока</span><strong>{allAttempts}</strong></div>
                   <div className="summary-row">
-                    <span>На «Отлично»</span>
+                      <span>Попыток на «Отлично»</span>
                     <strong>
                       {excellent} из {total}
                     </strong>
@@ -2283,8 +2304,8 @@ export function App() {
                   )}
                   {topError && (
                     <div className="summary-row">
-                      <span>Частая ошибка</span>
-                      <strong>{errorLabel(topError[0])}</strong>
+                      <span>{topError[1] > 1 ? "Частая ошибка" : "На что обратить внимание"}</span>
+                      <strong>{errorLabel(topError[0]).replace(/^часто /, "")}</strong>
                     </div>
                   )}
                   <p className="session-summary-note">

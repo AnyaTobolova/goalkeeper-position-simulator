@@ -69,9 +69,9 @@ const wallCriterionTexts: Record<CriterionStatus, string> = {
 };
 
 const excellentSummaryByScenarioType: Record<ScenarioType, string> = {
-  central_shot: "Ты правильно выбрал игровую зону и закрыл угол удара.",
-  side_shot: "Ты правильно сместился к мячу и закрыл ближний угол.",
-  sharp_angle: "Ты закрыл ближний угол и не открыл ворота за спиной.",
+  central_shot: "Ты правильно выбрал игровую зону и сократил угол удара.",
+  side_shot: "Ты правильно сместился к мячу и учёл ближний угол.",
+  sharp_angle: "Ты сместился к ближней штанге и сохранил позицию перед воротами.",
   long_shot: "Ты выбрал безопасную глубину и готов к дальнему удару.",
   close_shot: "Ты не выбежал лишнего и готов реагировать на удар.",
   one_v_one: "Ты сократил угол и сохранил готовность к удару.",
@@ -88,12 +88,12 @@ const excellentSummaryByScenarioType: Record<ScenarioType, string> = {
 };
 
 const summaryByErrorType: Record<FeedbackErrorType, string> = {
-  TOO_HIGH: "Ты правильно сместился к мячу, но вышел слишком далеко. Ворота остались за спиной, и нападающий может перебросить.",
-  TOO_DEEP: "Ты правильно сместился к мячу, но стоишь слишком близко к линии ворот. Из-за этого нападающему видно больше ворот.",
+  TOO_HIGH: "Ты вышел слишком далеко. Ворота остались за спиной, и нападающий может перебросить.",
+  TOO_DEEP: "Ты стоишь слишком близко к линии ворот. Из-за этого нападающему может быть видно больше ворот.",
   TOO_LEFT: "Ты ушёл слишком влево от линии мяча. Часть ворот открыта.",
   TOO_RIGHT: "Ты ушёл слишком вправо от линии мяча. Часть ворот открыта.",
   TOO_CENTRAL: "Мяч сбоку, а ты стоишь слишком по центру. Ближний угол открыт.",
-  NEAR_POST_OPEN: "Ближний угол открыт. С этой позиции туда легко пробить.",
+  NEAR_POST_OPEN: "Проверь позицию у ближнего угла: возможно, стоит сместиться к мячу.",
   OVERPROTECTS_NEAR_POST: "Ты слишком прижался к ближней штанге. Дальняя часть ворот открыта.",
   NOT_ADJUSTED_AFTER_PASS: "Мяч уже в другой точке. Позицию нужно поменять.",
   STUCK_NEAR_POST: "Мяч уже в другой точке. Позицию нужно поменять.",
@@ -215,16 +215,16 @@ function nearPostStatusText(level: Level, status: CriterionStatus) {
   const side = ballSideForLevel(level);
 
   if (side === "center") {
-    if (status === "good") return "центр закрыт";
-    if (status === "almost") return "центр почти закрыт";
+    if (status === "good") return "позиция по центру подходит";
+    if (status === "almost") return "позицию по центру можно уточнить";
     if (status === "dangerous") return "угол удара открыт";
     return "центр ворот открыт";
   }
 
   const sideText = side === "right" ? "правый" : "левый";
 
-  if (status === "good") return `${sideText} угол закрыт`;
-  if (status === "almost") return `${sideText} угол почти закрыт`;
+  if (status === "good") return `учтён ${sideText} ближний угол`;
+  if (status === "almost") return `проверь ${sideText} ближний угол`;
   return `${sideText} ближний угол открыт`;
 }
 
@@ -341,7 +341,11 @@ function criterionForKey(key: CriterionKey, result: CheckResult, level: Level): 
         key,
         label: "Контроль выхода",
         status: error === "RUSHED_1V1" || error === "PASSIVE_1V1" ? (result.result === "dangerous" ? "dangerous" : "bad") : currentDepthStatus,
-        text: error === "PASSIVE_1V1" ? "слишком пассивно" : error === "RUSHED_1V1" ? "выход слишком резкий" : "угол сокращён"
+        text: error === "PASSIVE_1V1" || error === "TOO_DEEP"
+          ? "слишком близко к воротам"
+          : error === "RUSHED_1V1" || error === "TOO_HIGH"
+            ? "выход слишком далеко"
+            : currentDepthStatus === "good" ? "глубина подходит" : "проверь глубину"
       };
     case "adjustment":
       return {
@@ -558,6 +562,10 @@ function summaryForResult(result: CheckResult, error?: FeedbackErrorType) {
 
   if (error === "TOO_LATE_REACTION" || error === "WRONG_BALL_OWNER") {
     return summaryByErrorType[error];
+  }
+
+  if (result.result === "almost" && (error === "TOO_LEFT" || error === "TOO_RIGHT" || error === "TOO_CENTRAL" || error === "TOO_DEEP" || error === "TOO_HIGH" || error === "PASSIVE_1V1" || error === "RUSHED_1V1")) {
+    return "Почти: позиция близка к рабочей. Посмотри на подсказку и немного поправь её.";
   }
 
   // При угловом и навесе линии удара еще нет: боковая ошибка - это уход из стартовой стойки.
