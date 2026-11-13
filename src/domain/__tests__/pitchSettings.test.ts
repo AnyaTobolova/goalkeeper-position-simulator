@@ -14,7 +14,7 @@ describe("Проверка размеров поля", () => {
     expect(pitchSettingsError(resized)).toContain("Дистанция стенки слишком велика");
     const smaller = { ...resized, freeKickDistance: 6.5 };
     expect(smaller).toMatchObject({ presetId: "custom", fieldWidth: 20, fieldLength: 30, goalWidth: 5, goalHeight: 2 });
-    expect(smaller.markings).toMatchObject({ penaltyAreaWidth: 14, goalAreaWidth: 7, penaltyAreaDepth: 6.5, goalAreaDepth: 2.5, penaltySpotDistance: 4.5 });
+    expect(smaller.markings).toMatchObject({ penaltyAreaWidth: 9, goalAreaWidth: 7, penaltyAreaDepth: 5, goalAreaDepth: 2.5, penaltySpotDistance: 4.5 });
     expect(pitchSettingsError(smaller)).toBeNull();
   });
 

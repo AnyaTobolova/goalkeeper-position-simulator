@@ -2022,12 +2022,13 @@ export function App() {
                 <div className="menu-formats" aria-label="Формат игры">
                   {(["5v5", "7v7", "8v8", "9v9", "11v11"] as const).map((id) => <button key={id} type="button" className={pitch.presetId === id ? "active" : ""} aria-pressed={pitch.presetId === id} onClick={() => handlePitchChange(pitchPresets[id])}>{id.replace("v", " × ")}</button>)}
                 </div>
-                <div className="menu-goal"><span>Размер ворот</span><strong>{pitch.goalWidth} × {pitch.goalHeight} м</strong><small>{pitch.presetId === "custom" || pitch.goalWidth !== pitchPresets[pitch.presetId].goalWidth || pitch.goalHeight !== pitchPresets[pitch.presetId].goalHeight ? "Сохранены свои размеры. Изменить их можно в настройках." : "Подобран для выбранного формата"}</small></div>
+                <div className="menu-goal"><span>Размер ворот</span><strong>{pitch.goalWidth.toLocaleString("ru-RU")} × {pitch.goalHeight.toLocaleString("ru-RU")} м</strong><small>{pitch.presetId === "custom" || pitch.goalWidth !== pitchPresets[pitch.presetId].goalWidth || pitch.goalHeight !== pitchPresets[pitch.presetId].goalHeight ? "Сохранены свои размеры. Изменить их можно в настройках." : "Подобран для выбранного формата"}</small></div>
+                {(pitch.presetId === "7v7" || pitch.presetId === "8v8") && <p className="menu-intro">Малая вратарская площадь показана приблизительно: её размер зависит от правил соревнования.</p>}
                 <div className="menu-navigation"><button type="button" onClick={() => setMenuStep("player")}>Назад</button><button className="primary" type="button" onClick={() => setMenuStep("training")}>Дальше <ChevronRight size={18} /></button></div>
               </>}
 
               {menuStep === "training" && <>
-              <div className="menu-selection">{activePlayer?.name} <span>·</span> {pitch.name} <span>·</span> ворота {pitch.goalWidth} × {pitch.goalHeight} м</div>
+              <div className="menu-selection">{activePlayer?.name} <span>·</span> {pitch.name} <span>·</span> ворота {pitch.goalWidth.toLocaleString("ru-RU")} × {pitch.goalHeight.toLocaleString("ru-RU")} м</div>
               <div className="start-section">
                 <div className="start-section-label">Программа тренировки</div>
                 <div className="start-mode-choice" aria-label="Выбор блока тренировки">

@@ -7,10 +7,10 @@ const adultMarkings = {
   centerCircleRadius: 9.15,
   hasPenaltyArea: true,
   penaltyAreaDepth: 16.5,
-  penaltyAreaWidth: 40,
+  penaltyAreaWidth: 40.32,
   hasGoalArea: true,
   goalAreaDepth: 5.5,
-  goalAreaWidth: 18,
+  goalAreaWidth: 18.32,
   hasPenaltySpot: true,
   penaltySpotDistance: 11,
   hasPenaltyArc: true,
@@ -63,8 +63,8 @@ export const pitchPresets: Record<PitchPresetId, PitchConfig> = {
     markings: {
       ...adultMarkings,
       centerCircleRadius: 7,
-      penaltyAreaDepth: 13,
-      penaltyAreaWidth: 28,
+      penaltyAreaDepth: 10,
+      penaltyAreaWidth: 18,
       goalAreaDepth: 5,
       goalAreaWidth: 14,
       penaltySpotDistance: 9,
@@ -85,8 +85,8 @@ export const pitchPresets: Record<PitchPresetId, PitchConfig> = {
     markings: {
       ...adultMarkings,
       centerCircleRadius: 7,
-      penaltyAreaDepth: 13,
-      penaltyAreaWidth: 30,
+      penaltyAreaDepth: 9,
+      penaltyAreaWidth: 19,
       goalAreaDepth: 5,
       goalAreaWidth: 14,
       penaltySpotDistance: 9,
@@ -118,13 +118,13 @@ export const pitchPresets: Record<PitchPresetId, PitchConfig> = {
   },
   "11v11": {
     presetId: "11v11",
-    goalPresetId: "seven_7x2",
+    goalPresetId: "adult_732x244",
     name: "11 на 11, футбольное поле",
     unit: "meters",
     fieldLength: 105,
     fieldWidth: 68,
-    goalWidth: 7,
-    goalHeight: 2,
+    goalWidth: 7.32,
+    goalHeight: 2.44,
     freeKickDistance: 9.15,
     markings: adultMarkings
   },
@@ -165,11 +165,11 @@ export function normalizeStoredPitch(saved: PitchConfig): PitchConfig {
   const oldDefault =
     (saved.presetId === "5v5" && saved.goalPresetId === "mini_3x2" && saved.goalWidth === 3 && saved.goalHeight === 2) ||
     (saved.presetId === "9v9" && saved.goalPresetId === "junior_5x2" && saved.goalWidth === 5 && saved.goalHeight === 2) ||
-    (saved.presetId === "11v11" && saved.goalPresetId === "adult_732x244" && saved.goalWidth === 7.32 && saved.goalHeight === 2.44);
+    (saved.presetId === "11v11" && saved.goalPresetId === "seven_7x2" && saved.goalWidth === 7 && saved.goalHeight === 2);
   const preset = pitchPresets[saved.presetId];
   if (oldDefault && preset) return preset;
 
-  const goalPresetId = saved.goalPresetId === "mini_3x2" || saved.goalPresetId === "adult_732x244" ? "custom" : saved.goalPresetId;
+  const goalPresetId = saved.goalPresetId === "mini_3x2" || (saved.goalPresetId === "adult_732x244" && saved.presetId !== "11v11") ? "custom" : saved.goalPresetId;
   if (saved.presetId !== "custom" && preset) {
     return { ...preset, goalPresetId, goalWidth: saved.goalWidth, goalHeight: saved.goalHeight, freeKickDistance: saved.freeKickDistance ?? preset.freeKickDistance };
   }

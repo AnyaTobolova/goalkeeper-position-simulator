@@ -55,6 +55,7 @@ export function SettingsPanel({ pitch, showDimensions, reactionTimeSeconds, onPi
       </div>
 
       {pitch.presetId === "custom" && <p className="pitch-settings-note">Разметка изменяется пропорционально полю и остаётся приблизительной.</p>}
+      {(pitch.presetId === "7v7" || pitch.presetId === "8v8") && <p className="pitch-settings-note">Малая вратарская площадь показана приблизительно: её размер зависит от правил соревнования.</p>}
       {pitchSettingsError(pitch) && <p className="pitch-settings-error" role="alert">{pitchSettingsError(pitch)}</p>}
 
       <label>
@@ -74,6 +75,7 @@ export function SettingsPanel({ pitch, showDimensions, reactionTimeSeconds, onPi
         <select value={pitch.goalPresetId} onChange={(event) => updateGoalPreset(event.target.value as GoalPresetId)}>
           <option value="junior_5x2">5 x 2 м</option>
           <option value="seven_7x2">7 x 2 м</option>
+          <option value="adult_732x244">7,32 x 2,44 м</option>
           <option value="custom">Свои размеры</option>
         </select>
       </label>
