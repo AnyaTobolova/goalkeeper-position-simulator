@@ -9,6 +9,7 @@ import { applyExitDecision } from "./domain/exitDecision";
 import { firstAttempts, marathonPoints, type SessionAttempt } from "./domain/sessionSummary";
 import { repeatReason } from "./domain/repeatReason";
 import { localDate } from "./domain/calendar";
+import { openedLevels } from "./domain/openedLevels";
 import { applyLevelVariation, mirrorLevel } from "./domain/variation";
 import { RulesQuiz } from "./components/RulesQuiz";
 import { PenaltyShootout } from "./components/PenaltyShootout";
@@ -126,7 +127,7 @@ function trainingModeTitle(mode: TrainingMode) {
   return mode === "base_position" ? "База" : "Реакция";
 }
 
-function customSessionTitle(kind?: "weak" | "day" | "marathon") {
+function customSessionTitle(kind?: "weak" | "day" | "marathon" | "single") {
   if (kind === "weak") {
     return "Повтор ситуаций";
   }
@@ -138,6 +139,8 @@ function customSessionTitle(kind?: "weak" | "day" | "marathon") {
   if (kind === "marathon") {
     return "Марафон";
   }
+
+  if (kind === "single") return "Выбранная ситуация";
 
   return null;
 }
@@ -913,6 +916,7 @@ export function App() {
   const [dataReturnStep, setDataReturnStep] = useState<"player" | "pitch" | "training">("player");
   const [hasEnteredGame, setHasEnteredGame] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState("");
+  const [topicFilter, setTopicFilter] = useState<Level["category"] | "all">("all");
   const [pitch, setPitch] = useState<PitchConfig>(() => loadPitch());
   const [progress, setProgress] = useState<Progress>(() => loadPlayerProgress(loadActivePlayerId(loadPlayers())));
   const [levelIndex, setLevelIndex] = useState(0);
@@ -968,7 +972,7 @@ export function App() {
   }, []);
   // Специальные сессии: «Слабые места», «Тренировка дня», «Марафон».
   // Список сценариев фиксируется на момент запуска, чтобы не менялся по ходу.
-  const [customSession, setCustomSession] = useState<{ kind: "weak" | "day" | "marathon"; ids: string[] } | null>(null);
+  const [customSession, setCustomSession] = useState<{ kind: "weak" | "day" | "marathon" | "single"; ids: string[] } | null>(null);
   // Журнал текущей сессии для экрана итогов.
   const [sessionLog, setSessionLog] = useState<SessionAttempt[]>([]);
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -1069,6 +1073,12 @@ export function App() {
   const activePitch = level.pitchPresetOverride ? pitchPresets[level.pitchPresetOverride] : pitch;
   const activePlayer = players.find((player) => player.id === activePlayerId) ?? players[0];
   const savedLevelIndex = Math.min(trainingLevels.length - 1, loadPlayerLastLevelIndex(activePlayerId, trainingMode));
+  const availableLevels = openedLevels(levels, progress, {
+    base_position: loadPlayerLastLevelIndex(activePlayerId, "base_position"),
+    reaction_to_ball_owner: loadPlayerLastLevelIndex(activePlayerId, "reaction_to_ball_owner")
+  });
+  const availableTopics = [...new Set(availableLevels.map((item) => item.category))];
+  const filteredLevels = availableLevels.filter((item) => topicFilter === "all" || item.category === topicFilter);
   const hasTrainingToContinue = savedLevelIndex > 0 || trainingLevels.some((item) => (progress[item.id]?.attempts ?? 0) > 0);
   const feedback = useMemo(() => (result ? buildFeedback(result, level) : null), [level, result]);
   const shownFeedback = analysisRevealed ? feedback : null;
@@ -1276,6 +1286,14 @@ export function App() {
 
   function startMarathon() {
     setCustomSession({ kind: "marathon", ids: buildMarathonIds() });
+    setSessionLog([]);
+    setPlayerSelected(true);
+    setHasEnteredGame(true);
+  }
+
+  function startSingleSituation(levelId: string) {
+    if (!availableLevels.some((item) => item.id === levelId)) return;
+    setCustomSession({ kind: "single", ids: [levelId] });
     setSessionLog([]);
     setPlayerSelected(true);
     setHasEnteredGame(true);
@@ -2088,6 +2106,23 @@ export function App() {
                   </button>
                 </div>
               </div>
+
+              <details className="start-section situation-picker">
+                <summary>Выбрать открытую ситуацию</summary>
+                <p>Выбери тему и задание. Место в программе сохранится, а ответ запишется в статистику.</p>
+                <label htmlFor="situation-topic">Тема</label>
+                <select id="situation-topic" value={topicFilter} onChange={(event) => setTopicFilter(event.target.value as Level["category"] | "all")}>
+                  <option value="all">Все темы</option>
+                  {availableTopics.map((category) => <option key={category} value={category}>{categoryTitle(category)}</option>)}
+                </select>
+                <div className="situation-list" aria-label="Открытые ситуации">
+                  {filteredLevels.length ? filteredLevels.map((item) => (
+                    <button key={item.id} type="button" onClick={() => startSingleSituation(item.id)}>
+                      <span>{item.title}</span><small>{categoryTitle(item.category)}</small>
+                    </button>
+                  )) : <p>В этой теме пока нет открытых ситуаций.</p>}
+                </div>
+              </details>
 
               <div className="start-section">
                 <div className="start-section-label">Режимы и мини-игры</div>

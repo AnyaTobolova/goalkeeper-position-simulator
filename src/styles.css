@@ -3575,6 +3575,15 @@ input:focus {
 .menu-selection span { color: #ffcf33; }
 .start-modal .start-section { border-color: #294c68; background: #0d223c; }
 .start-modal .start-section-label { color: #70daf4; }
+.start-modal .situation-picker { display: block; }
+.situation-picker summary { cursor: pointer; color: #70daf4; font-weight: 800; padding: 6px 0; }
+.situation-picker p { color: #b8cde0; font-size: 13px; line-height: 1.4; margin: 8px 0; }
+.situation-picker label { display: block; margin: 10px 0 4px; color: #d8e8f5; font-size: 13px; }
+.situation-picker select { width: 100%; }
+.situation-list { display: grid; gap: 6px; max-height: 250px; overflow-y: auto; margin-top: 10px; }
+.situation-list button { display: flex; justify-content: space-between; gap: 8px; min-height: 46px; width: 100%; text-align: left; }
+.situation-list button span { min-width: 0; overflow-wrap: anywhere; }
+.situation-list button small { color: #b8cde0; flex-shrink: 0; }
 .menu-data-link, .menu-back { justify-self: start; padding: 8px 0; min-height: 40px; border: 0; background: transparent; color: #a8c3d9; font-size: 13px; }
 .menu-data { display: grid; gap: 12px; padding: 14px; background: #10253d; }
 @media (max-width: 480px) {
