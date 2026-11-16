@@ -485,28 +485,28 @@ function buildVisualHints(result: CheckResult, level: Level, criteria: Criterion
 
 function explainWhy(result: CheckResult, level: Level) {
   const error = resultError(result, level);
+  const scenario = result.evaluation.scenarioType;
 
   if (result.result === "correct") {
-    return excellentSummaryByScenarioType[result.evaluation.scenarioType];
+    if (scenario === "corner" || scenario === "high_cross") return "Это стартовая позиция для показанного упражнения; исход подачи зависит от её движения и других игроков.";
+    if (scenario === "free_kick") return "По схеме стенка закрывает часть ворот, а вратарь занимает другую часть и следит за мячом.";
+    if (scenario === "penalty") return "До удара вратарь должен находиться на линии ворот, а в момент удара — соблюдать правило положения ноги.";
+    return "Позиция относительно мяча и ворот помогает уменьшить открытый для удара угол.";
   }
 
-  if (level.previousBall) {
-    return "Голубой пунктир соединяет отмеченные положения мяча. Следи за мячом и своей позицией.";
-  }
-
-  if (result.evaluation.scenarioType === "reaction_to_ball_owner") {
-    return "Во втором этапе правильная позиция строится только после появления мяча. Игрок без мяча остается риском паса, но главная линия идет от активного мяча.";
-  }
-
-  if (level.freeKick || error === "NO_BALL_VISIBILITY") {
-    return "Голубая линия соединяет вратаря и мяч. Проверь, не закрывает ли стенка обзор.";
-  }
-
-  if (error === "TOO_HIGH" || error === "TOO_DEEP" || error === "PASSIVE_1V1" || error === "RUSHED_1V1") {
-    return "Красная зона показывает опасную глубину: слишком близко к воротам или слишком далеко от них.";
-  }
-
-  return "Белая линия показывает линию удара от мяча к центру ворот. Вратарь должен быть рядом с этой линией.";
+  if (scenario === "penalty") return "До удара действует правило линии ворот; положение белой точки помогает проверить стойку в игре.";
+  if (error === "WRONG_BODY_ANGLE") return "Если корпус повёрнут не к мячу, сложнее подготовиться к удару.";
+  if (error === "TOO_LATE_REACTION") return "Положение мяча изменилось, а время на выбор позиции закончилось.";
+  if (error === "WRONG_BALL_OWNER") return "Игрок с мячом создаёт текущую угрозу удара; другие игроки могут получить пас.";
+  if (error === "WALL_COUNT_WRONG") return "Число игроков меняет ширину условной стенки и оставляет разную часть ворот открытой.";
+  if (error === "WALL_POSITION_WRONG" || error === "NO_BALL_VISIBILITY") return "Стенка должна помогать прикрывать ворота и не мешать вратарю следить за мячом.";
+  if (error === "WRONG_EXIT_DECISION") return level.exitDecision === "go" ? "По условию упражнения мяч доступен, а путь к нему свободен." : "По условию упражнения путь к мячу перекрыт игроками.";
+  if (scenario === "corner" || scenario === "high_cross") return "Стартовая позиция помогает сохранять ворота и наблюдать за развитием подачи; её исход схема не предсказывает.";
+  if (error === "NOT_ADJUSTED_AFTER_PASS" || error === "STUCK_NEAR_POST") return "После изменения положения мяча меняется и направление возможного удара.";
+  if (error === "TOO_HIGH" || error === "RUSHED_1V1") return "Слишком далёкий выход оставляет пространство за вратарём для обводки или переброса.";
+  if (error === "TOO_DEEP" || error === "PASSIVE_1V1") return "Близко к линии ворот нападающему может быть видна большая часть ворот.";
+  if (error === "IGNORED_DEFENDER") return "Защитник находится рядом с мячом; на схеме нельзя определить, успеет ли он помешать удару.";
+  return "Если сместиться слишком далеко от направления мяча к воротам, нападающему может открыться больше ворот.";
 }
 
 function validateFeedback(feedback: FeedbackResult) {

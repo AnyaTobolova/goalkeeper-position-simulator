@@ -24,5 +24,14 @@ describe("Достоверность подсказок", () => {
     expect(feedback.visualHints).not.toContain("BALL_VISIBILITY_LINE");
     expect(feedback.criteria.map((item) => item.key)).not.toContain("trajectory");
     expect(feedback.criteria.map((item) => item.key)).not.toContain("visibility");
+    expect(feedback.details?.why).toContain("исход подачи");
+  });
+
+  it("объясняет риск выхода, а не только значение цвета на поле", () => {
+    const level = levels.find((item) => item.id === "one-v-one-right")!;
+    const pitch = pitchPresets["7v7"];
+    const point = { x: level.ball.x, y: level.ball.y - 1 };
+    const feedback = buildFeedback(checkAnswer(point, level, pitch), level);
+    expect(feedback.details?.why).toMatch(/обводки|переброса/);
   });
 });

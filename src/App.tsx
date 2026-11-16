@@ -1072,7 +1072,12 @@ export function App() {
   const hasTrainingToContinue = savedLevelIndex > 0 || trainingLevels.some((item) => (progress[item.id]?.attempts ?? 0) > 0);
   const feedback = useMemo(() => (result ? buildFeedback(result, level) : null), [level, result]);
   const shownFeedback = analysisRevealed ? feedback : null;
-  const visibleFieldLegend = useMemo(() => fieldLegendItems(shownFeedback?.visualHints ?? []), [shownFeedback]);
+  const fieldHints = useMemo(() => {
+    const hints = shownFeedback?.visualHints ?? [];
+    return whyVisible ? hints : hints.filter((hint) => ["CURRENT_BALL_POINT", "CORRECT_ZONE", "ALMOST_ZONE", "MOVE_ARROW"].includes(hint));
+  }, [shownFeedback, whyVisible]);
+  const positiveCriterion = shownFeedback?.criteria.find((criterion) => criterion.status === "good");
+  const visibleFieldLegend = useMemo(() => fieldLegendItems(fieldHints), [fieldHints]);
   const marathonScore = useMemo(
     () => (customSession?.kind === "marathon" ? marathonPoints(sessionLog) : null),
     [customSession, sessionLog]
@@ -1663,9 +1668,9 @@ export function App() {
             goalkeeperFacing={goalkeeperFacing}
             result={result}
             showDimensions={showDimensions}
-            visualHints={shownFeedback?.visualHints ?? []}
-            showOpenGoal={Boolean(shownFeedback)}
-            alternativePlayerId={shownFeedback ? alternativePlayerId : null}
+            visualHints={fieldHints}
+            showOpenGoal={Boolean(shownFeedback && whyVisible)}
+            alternativePlayerId={shownFeedback && whyVisible ? alternativePlayerId : null}
             hideBall={isReactionLevel && !reactionActive}
             wall={level.freeKick ? wall : undefined}
             onGoalkeeperChange={(point) => {
@@ -1728,11 +1733,23 @@ export function App() {
             {!result && level.category === "defender_pressure" && (
               <p className="session-summary-note">Посмотри, где защитник относительно мяча и ворот. На схеме не показано, успеет ли он помешать удару.</p>
             )}
-            {level.freeKick && <p className="session-summary-note">Голубая линия под стенкой показывает её условную ширину на земле. Это схема, а не вероятность гола.</p>}
+            {!result && level.freeKick && <p className="session-summary-note">Голубая линия под стенкой показывает её условную ширину на земле. Это схема, а не вероятность гола.</p>}
+            {shownFeedback && result && (
+              <>
+                {result.result !== "correct" && positiveCriterion && (
+                  <p className="session-summary-note"><strong>Получилось:</strong> {positiveCriterion.label.toLowerCase()} — {positiveCriterion.text}.</p>
+                )}
+                <p className="session-summary-note"><strong>Почему:</strong> {shownFeedback.details?.why}</p>
+                <div className="how-card">
+                  <strong>{result.result === "correct" ? "Как закрепить" : "Главная поправка"}</strong>
+                  <span>{shownFeedback.mainAdvice}</span>
+                </div>
+              </>
+            )}
             {shownFeedback && result?.evaluation.openShotTarget && shotExample(result, level, goalkeeper, activePitch, level.freeKick ? wall : undefined) && (
               <p className="session-summary-note">Это пример удара по условной схеме, а не прогноз. Оценка позиции показана отдельно.</p>
             )}
-            {shownFeedback && alternativeAttackers.length > 0 && ["one_v_one", "pass_reposition", "defender_pressure"].includes(level.category) && (
+            {whyVisible && shownFeedback && alternativeAttackers.length > 0 && ["one_v_one", "pass_reposition", "defender_pressure"].includes(level.category) && (
               <div className="alternative-pass">
                 <p>Если последует пас, угол удара изменится. Посмотри линии от другого нападающего и будь готов перестроиться.</p>
                 {alternativeAttackers.map((player, index) => (
@@ -1749,7 +1766,7 @@ export function App() {
                   : "По условию путь к мячу перекрыт игроками: в этом упражнении выбираем «Останусь в воротах»."}
               </p>
             )}
-            {shownFeedback && result && result.evaluation.openGoalPercent !== undefined && (
+            {whyVisible && shownFeedback && result && result.evaluation.openGoalPercent !== undefined && (
               <div className="open-goal-row" aria-label="Открытая часть ворот">
                 <span>
                   Нападающему примерно открыто <strong>{result.evaluation.openGoalPercent}%</strong> ворот
@@ -1762,7 +1779,7 @@ export function App() {
                 )}
               </div>
             )}
-            {shownFeedback && result && level.freeKick && (
+            {whyVisible && shownFeedback && result && level.freeKick && (
               <div className="open-goal-row" aria-label="Открытая часть ворот при штрафном">
                 <span>Оранжевым показана условная открытая часть ворот по земле. Размеры игроков условны, высота удара не учитывается.</span>
               </div>
@@ -1773,19 +1790,12 @@ export function App() {
             {shownFeedback && result && (
               <>
                 <div className="why-toggle-row">
-                  <button className={`why-toggle ${whyVisible ? "active" : ""}`} type="button" onClick={() => setWhyVisible((current) => !current)}>
+                  <button className={`why-toggle ${whyVisible ? "active" : ""}`} type="button" aria-expanded={whyVisible} onClick={() => setWhyVisible((current) => !current)}>
                     <Eye size={16} />
-                    <span>{whyVisible ? "Скрыть объяснение" : "Почему так и что покажет поле"}</span>
+                    <span>{whyVisible ? "Скрыть подробности" : "Подробнее: критерии и линии"}</span>
                   </button>
                 </div>
-                {whyVisible && (
-                  <div className="why-card">
-                    <strong>Почему так</strong>
-                    <span>{shownFeedback.details?.why}</span>
-                    <span>{shownFeedback.details?.howToFix}</span>
-                  </div>
-                )}
-                <div className="criteria-list" aria-label="Разбор решения">
+                {whyVisible && <div className="criteria-list" aria-label="Разбор решения">
                   {shownFeedback.criteria.map((criterion) => (
                     <div className="criterion-row" key={criterion.key}>
                       <span className={`criterion-status ${criterion.status}`}>{criterionStatusText(criterion.status)}</span>
@@ -1795,7 +1805,7 @@ export function App() {
                       </div>
                     </div>
                   ))}
-                </div>
+                </div>}
                 {whyVisible && criteriaLegendItems(shownFeedback.criteria).length > 0 && (
                   <div className="zone-legend" aria-label="Обозначения зон">
                     {criteriaLegendItems(shownFeedback.criteria).map((item) => (
@@ -1806,10 +1816,6 @@ export function App() {
                     ))}
                   </div>
                 )}
-                <div className="how-card">
-                  <strong>{result.result === "correct" ? "Как закрепить" : "Как поправить"}</strong>
-                  <span>{shownFeedback.mainAdvice}</span>
-                </div>
                 {result.result !== "correct" && (
                   <div className="correction-actions">
                     <button type="button" onClick={() => resetLevel()}><RotateCcw size={18} />Поправить</button>
@@ -1819,7 +1825,7 @@ export function App() {
               </>
             )}
 
-            {level.freeKick && (
+              {!result && level.freeKick && (
               <div className="wall-control">
                 <div>
                   <strong>Стенка</strong>
@@ -1898,9 +1904,9 @@ export function App() {
                   </button>
                 )
               ) : (
-                <button type="button" onClick={() => setWhyVisible((current) => !current)}>
+                <button type="button" aria-expanded={whyVisible} onClick={() => setWhyVisible((current) => !current)}>
                   <Eye size={18} />
-                  <span>{whyVisible ? "Скрыть объяснение" : "Почему так"}</span>
+                  <span>{whyVisible ? "Скрыть подробности" : "Подробнее"}</span>
                 </button>
               )}
 
