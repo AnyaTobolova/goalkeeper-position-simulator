@@ -1,5 +1,6 @@
 import type { PitchConfig, PlayerProfile, Progress, ReactionDifficulty, ReactionTimeSeconds, TrainingMode } from "./domain/types";
 import { normalizeStoredPitch, pitchPresets } from "./domain/presets";
+import { previousDate } from "./domain/calendar";
 
 const progressKey = "goalkeeper-sim:progress";
 const playersKey = "goalkeeper-sim:players";
@@ -278,7 +279,7 @@ export function recordDayTraining(playerId: string, todayIso: string): DayStreak
     return current;
   }
 
-  const yesterday = new Date(new Date(`${todayIso}T12:00:00`).getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const yesterday = previousDate(todayIso);
   const streak = current && current.lastDate === yesterday ? current.streak + 1 : 1;
   const next: DayStreak = { lastDate: todayIso, streak, best: Math.max(streak, current?.best ?? 0) };
   localStorage.setItem(dayStreakKey(playerId), JSON.stringify(next));

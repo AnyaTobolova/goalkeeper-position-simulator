@@ -8,6 +8,7 @@ import { checkAnswer, resolveTimeoutResult } from "./domain/evaluate";
 import { applyExitDecision } from "./domain/exitDecision";
 import { firstAttempts, marathonPoints, type SessionAttempt } from "./domain/sessionSummary";
 import { repeatReason } from "./domain/repeatReason";
+import { localDate } from "./domain/calendar";
 import { applyLevelVariation, mirrorLevel } from "./domain/variation";
 import { RulesQuiz } from "./components/RulesQuiz";
 import { PenaltyShootout } from "./components/PenaltyShootout";
@@ -141,7 +142,7 @@ function customSessionTitle(kind?: "weak" | "day" | "marathon") {
   return null;
 }
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = localDate;
 
 function seededShuffle<T>(items: T[], seedText: string): T[] {
   let seed = 0;
