@@ -24,6 +24,9 @@ export function PenaltyShootout({ bestScore, onFinish, onClose }: PenaltyShootou
   const [picked, setPicked] = useState<number | null>(null);
   const [results, setResults] = useState<("save" | "goal")[]>([]);
   const timersRef = useRef<number[]>([]);
+  const resultsRef = useRef<("save" | "goal")[]>([]);
+  const roundResolvedRef = useRef(false);
+  const shotStartedRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -36,10 +39,12 @@ export function PenaltyShootout({ bestScore, onFinish, onClose }: PenaltyShootou
   }
 
   function strike() {
-    if (phase !== "ready") {
+    if (phase !== "ready" || shotStartedRef.current) {
       return;
     }
 
+    shotStartedRef.current = true;
+    roundResolvedRef.current = false;
     setPhase("windup");
     setPicked(null);
     setTarget(null);
@@ -49,37 +54,33 @@ export function PenaltyShootout({ bestScore, onFinish, onClose }: PenaltyShootou
       setPhase("flying");
       schedule(() => {
         // Если угол не выбран за время полета - гол.
-        setPhase((current) => {
-          if (current === "flying") {
-            finishRound(null, shotTarget);
-            return "outcome";
-          }
-
-          return current;
-        });
+        finishRound(null, shotTarget);
       }, flyWindowMs);
     }, 650 + Math.random() * 750);
   }
 
   function finishRound(pickedZone: number | null, shotTarget: number) {
+    // Таймер и нажатие могут прийти почти одновременно: удар засчитывается один раз.
+    if (roundResolvedRef.current) return;
+    roundResolvedRef.current = true;
     const saved = pickedZone !== null && pickedZone === shotTarget;
-    setResults((current) => {
-      const next = [...current, saved ? ("save" as const) : ("goal" as const)];
+    const next = [...resultsRef.current, saved ? ("save" as const) : ("goal" as const)];
+    resultsRef.current = next;
+    setResults(next);
+    setPhase("outcome");
 
-      schedule(() => {
-        if (next.length >= totalShots) {
-          setPhase("done");
-          onFinish(next.filter((item) => item === "save").length);
-        } else {
-          setRound(next.length);
-          setPhase("ready");
-          setTarget(null);
-          setPicked(null);
-        }
-      }, 1400);
-
-      return next;
-    });
+    schedule(() => {
+      if (next.length >= totalShots) {
+        setPhase("done");
+        onFinish(next.filter((item) => item === "save").length);
+      } else {
+        setRound(next.length);
+        shotStartedRef.current = false;
+        setPhase("ready");
+        setTarget(null);
+        setPicked(null);
+      }
+    }, 1400);
   }
 
   function pickZone(zone: number) {
@@ -88,13 +89,15 @@ export function PenaltyShootout({ bestScore, onFinish, onClose }: PenaltyShootou
     }
 
     setPicked(zone);
-    setPhase("outcome");
     finishRound(zone, target);
   }
 
   function restart() {
     timersRef.current.forEach((timer) => window.clearTimeout(timer));
     timersRef.current = [];
+    resultsRef.current = [];
+    roundResolvedRef.current = false;
+    shotStartedRef.current = false;
     setPhase("ready");
     setRound(0);
     setTarget(null);
