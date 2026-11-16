@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { checkAnswer } from "../evaluate";
+import { checkAnswer, freeKickWallZone } from "../evaluate";
 import { fromMeters, toMeters } from "../geometry";
 import { levels } from "../levels";
-import { openGoalSegments } from "../openGoalSegments";
+import { openGoalSegments, openGoalSegmentsWithWall } from "../openGoalSegments";
 import { buildPositionZones } from "../positionZones";
 import { pitchPresets } from "../presets";
 import { shotExample } from "../shotExample";
@@ -53,5 +53,34 @@ describe("Пример удара в разборе", () => {
     const result = checkAnswer(point, level, pitch);
     expect(["wrong", "dangerous"]).toContain(result.result);
     expect(shotExample(result, level, point, pitch)).toBeNull();
+  });
+
+  it("для штрафного показывает сейв при хорошем ответе и гол только в участок, открытый с учётом стенки", () => {
+    const pitch = pitchPresets["7v7"];
+    const level = levels.find((item) => item.id === "free-kick-close-center")!;
+    const zone = freeKickWallZone(toMeters(level.ball, pitch), pitch, level.goalTarget?.side);
+    const wall = { count: level.freeKick!.recommendedWallCount, x: (zone.xMin + zone.xMax) / 2, y: (zone.yMin + zone.yMax) / 2 };
+    const ideal = fromMeters(buildPositionZones(level, pitch).ideal, pitch);
+    const good = checkAnswer(ideal, level, pitch, undefined, wall);
+    expect(good.result).toBe("correct");
+    expect(good.evaluation.openShotTarget).toBeDefined();
+    expect(shotExample(good, level, ideal, pitch, wall)?.isGoal).toBe(false);
+    const badPoint = { x: 35, y: 1 };
+    const bad = checkAnswer(badPoint, level, pitch, undefined, wall);
+    expect(["wrong", "dangerous"]).toContain(bad.result);
+    const example = shotExample(bad, level, badPoint, pitch, wall)!;
+    expect(example.isGoal).toBe(true);
+    const target = toMeters(example.target, pitch);
+    expect(openGoalSegmentsWithWall(toMeters(level.ball, pitch), toMeters(badPoint, pitch), pitch, { ...toMeters(wall, pitch), count: wall.count })
+      .some(([left, right]) => target.x > left && target.x < right)).toBe(true);
+  });
+
+  it("не задаёт пример прямого удара для углового и навеса", () => {
+    for (const id of ["high-cross-crowd", "corner-right-open-far-post"]) {
+      const level = levels.find((item) => item.id === id)!;
+      const pitch = pitchPresets["7v7"];
+      const point = fromMeters(buildPositionZones(level, pitch).ideal, pitch);
+      expect(checkAnswer(point, level, pitch).evaluation.openShotTarget).toBeUndefined();
+    }
   });
 });

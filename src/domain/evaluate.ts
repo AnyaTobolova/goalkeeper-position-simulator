@@ -306,7 +306,9 @@ export function evaluateGoalkeeper(
   const showsOpenGoal = !setPiece || scenarioType === "penalty";
   const openGoalPercent = showsOpenGoal ? Math.round(openGoalShare(ball, goalkeeper, pitch) * 100) : undefined;
   const optimalOpenGoalPercent = showsOpenGoal ? Math.round(openGoalShare(ball, targetPoint, pitch) * 100) : undefined;
-  const openShotTarget = showsOpenGoal ? fromMeters(widestOpenGoalPoint(ball, goalkeeper, pitch), pitch) : undefined;
+  // Штрафной тоже может завершиться прямым ударом; открытый участок для
+  // примера отдельно вычисляется с учётом стенки в shotExample.
+  const openShotTarget = showsOpenGoal || scenarioType === "free_kick" ? fromMeters(widestOpenGoalPoint(ball, goalkeeper, pitch), pitch) : undefined;
 
   return {
     scenarioType,
