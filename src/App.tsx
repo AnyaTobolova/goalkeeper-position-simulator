@@ -7,6 +7,7 @@ import { StatsPanel } from "./components/StatsPanel";
 import { checkAnswer, resolveTimeoutResult } from "./domain/evaluate";
 import { applyExitDecision } from "./domain/exitDecision";
 import { firstAttempts, marathonPoints, type SessionAttempt } from "./domain/sessionSummary";
+import { repeatReason } from "./domain/repeatReason";
 import { applyLevelVariation, mirrorLevel } from "./domain/variation";
 import { RulesQuiz } from "./components/RulesQuiz";
 import { PenaltyShootout } from "./components/PenaltyShootout";
@@ -126,7 +127,7 @@ function trainingModeTitle(mode: TrainingMode) {
 
 function customSessionTitle(kind?: "weak" | "day" | "marathon") {
   if (kind === "weak") {
-    return "Слабые места";
+    return "Повтор ситуаций";
   }
 
   if (kind === "day") {
@@ -1705,6 +1706,10 @@ export function App() {
                   : "Смотрим удар..."
                 : customSession?.kind === "marathon"
                   ? `Марафон: 10 случайных ситуаций без подсказок. В зачёт идёт первая попытка. Сейчас у тебя ${marathonScore ?? 0} очков.`
+                  : customSession?.kind === "weak" && repeatReason(progress[level.id]) === "reinforce"
+                  ? "Уже получилось «Отлично»! Повтори ещё раз подряд, чтобы закрепить."
+                  : customSession?.kind === "weak" && repeatReason(progress[level.id]) === "fix"
+                  ? "Попробуй исправить прошлую попытку: посмотри на мяч и выбери позицию."
                   : isReactionLevel && reactionPhase === "waiting"
                   ? `${activePlayer?.name ?? "Игрок"}, сначала прочитай расстановку. Мяч появится через мгновение.`
                   : `${activePlayer?.name ?? "Игрок"}, выбери позицию до удара.`}
@@ -2076,7 +2081,7 @@ export function App() {
                   </button>
                   <button type="button" onClick={startWeakSpots} disabled={weakSpotsCount === 0} title={weakSpotsCount === 0 ? "Пока нет сценариев на повтор" : undefined}>
                     <Target size={18} />
-                    <span>Слабые места{weakSpotsCount > 0 ? ` (${weakSpotsCount})` : ""}</span>
+                    <span>Повтор ситуаций{weakSpotsCount > 0 ? ` (${weakSpotsCount})` : ""}</span>
                   </button>
                   <button type="button" onClick={() => setShootoutOpen(true)}>
                     <Award size={18} />
@@ -2300,7 +2305,7 @@ export function App() {
                     {excellent === total && total > 0
                       ? "Идеальная тренировка - так держать!"
                       : topError
-                        ? "Ошибочные ситуации вернутся на повтор. Загляни в «Слабые места»."
+                        ? "Ситуации можно повторить в режиме «Повтор ситуаций»."
                         : "Хорошая работа. Продолжай в том же духе."}
                   </p>
                 </div>
@@ -2314,7 +2319,7 @@ export function App() {
                       }}
                     >
                       <Target size={18} />
-                      <span>Слабые места</span>
+                      <span>Повтор ситуаций</span>
                     </button>
                   )}
                   <button className="primary" type="button" onClick={closeToMenu}>

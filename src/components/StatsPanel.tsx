@@ -3,6 +3,7 @@ import type { ErrorType, Level, PlayerProfile, Progress } from "../domain/types"
 import { levels as allLevels } from "../domain/levels";
 import { computeBadges, isScenarioMastered } from "../domain/badges";
 import { summarizeSkills } from "../domain/skillSummary";
+import { repeatReason } from "../domain/repeatReason";
 import { loadPenaltyBest } from "../storage";
 
 type StatsPanelProps = {
@@ -87,8 +88,7 @@ function collectWeakLevels(levels: Level[], progress: Progress) {
       const aMistakes = (a.progress?.wrongAttempts ?? 0) * 2 + (a.progress?.almostAttempts ?? 0);
       const bMistakes = (b.progress?.wrongAttempts ?? 0) * 2 + (b.progress?.almostAttempts ?? 0);
       return bMistakes - aMistakes;
-    })
-    .slice(0, 5);
+    });
 }
 
 export function StatsPanel({ levels, players, activePlayerId, selectedPlayerId, progressByPlayer, onSelectedPlayerChange, onTrainPlayer, onOpenLevel, onClearPlayerProgress }: StatsPanelProps) {
@@ -96,6 +96,8 @@ export function StatsPanel({ levels, players, activePlayerId, selectedPlayerId, 
   const selectedPlayer = players.find((player) => player.id === selectedPlayerId) ?? players[0];
   const errorStats = collectErrorStats(progress);
   const weakLevels = collectWeakLevels(levels, progress);
+  const fixLevels = weakLevels.filter(({ progress: item }) => repeatReason(item) === "fix").slice(0, 5);
+  const reinforceLevels = weakLevels.filter(({ progress: item }) => repeatReason(item) === "reinforce").slice(0, 5);
   const attempts = Object.values(progress).reduce((sum, item) => sum + item.attempts, 0);
   const mistakes = Object.values(progress).reduce((sum, item) => sum + (item.wrongAttempts ?? 0) + (item.almostAttempts ?? 0), 0);
   const mastered = levels.filter((level) => isScenarioMastered(progress[level.id])).length;
@@ -166,7 +168,7 @@ export function StatsPanel({ levels, players, activePlayerId, selectedPlayerId, 
       </div>
 
       {errorStats.length === 0 ? (
-        <p className="empty-stats">Ошибок пока нет. После тренировки здесь появятся слабые места.</p>
+        <p className="empty-stats">Ошибок пока нет. После тренировки здесь появится история ошибок.</p>
       ) : (
         <div className="error-list">
           {errorStats.slice(0, 4).map((item) => (
@@ -187,11 +189,20 @@ export function StatsPanel({ levels, players, activePlayerId, selectedPlayerId, 
             <AlertTriangle size={16} />
             <span>Задания для повтора</span>
           </div>
-          {weakLevels.map(({ level, progress: item }) => (
+          {fixLevels.length > 0 && <p>Исправить: последняя попытка была не на «Отлично».</p>}
+          {fixLevels.map(({ level }) => (
             <button className="weak-level-button" type="button" key={level.id} onClick={() => onOpenLevel(level.id)}>
               <ListRestart size={16} />
               <span>{level.title}</span>
-              <small>{(item?.wrongAttempts ?? 0) + (item?.almostAttempts ?? 0) || "повтор"}</small>
+              <small>исправить</small>
+            </button>
+          ))}
+          {reinforceLevels.length > 0 && <p>Закрепить: уже получилось «Отлично» — повтори ещё раз подряд.</p>}
+          {reinforceLevels.map(({ level }) => (
+            <button className="weak-level-button" type="button" key={level.id} onClick={() => onOpenLevel(level.id)}>
+              <ListRestart size={16} />
+              <span>{level.title}</span>
+              <small>закрепить</small>
             </button>
           ))}
         </div>
