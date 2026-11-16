@@ -1718,6 +1718,16 @@ export function App() {
             {!result && inferScenarioType(level, activePitch) === "one_v_one_loose_touch" && (
               <p className="session-summary-note">Мяч отпущен от ноги. Выбери стойку перед возможным ударом: скорость здесь не показана, поэтому нельзя определить, успеешь ли ты забрать мяч.</p>
             )}
+            {!result && level.exitDecision && (
+              <p className="session-summary-note">
+                {level.exitDecision === "go"
+                  ? "Условие упражнения: представь, что мяч летит в доступную зону, а путь к нему свободен. Скорость и высота на схеме не показаны."
+                  : "Условие упражнения: представь, что мяч летит в скопление игроков и путь к нему перекрыт. Скорость и высота на схеме не показаны."}
+              </p>
+            )}
+            {!result && level.category === "defender_pressure" && (
+              <p className="session-summary-note">Посмотри, где защитник относительно мяча и ворот. На схеме не показано, успеет ли он помешать удару.</p>
+            )}
             {shownFeedback && result?.evaluation.openShotTarget && shotExample(result, level, goalkeeper, activePitch, level.freeKick ? wall : undefined) && (
               <p className="session-summary-note">Это пример удара по условной схеме, а не прогноз. Оценка позиции показана отдельно.</p>
             )}
@@ -1734,8 +1744,8 @@ export function App() {
             {result && analysisRevealed && level.exitDecision && exitChoice && exitChoice !== level.exitDecision && (
               <p className="decision-note">
                 {level.exitDecision === "go"
-                  ? "Решение: подача чистая, во вратарской никто не мешает - такой мяч вратарь забирает сам. Правильный выбор - «Выйду на мяч»."
-                  : "Решение: траектория спорная и вокруг игроки - выходить рискованно. Правильный выбор - «Останусь в воротах»."}
+                  ? "По условию мяч доступен и путь свободен: в этом упражнении выбираем «Выйду на мяч». В игре это не прогноз исхода."
+                  : "По условию путь к мячу перекрыт игроками: в этом упражнении выбираем «Останусь в воротах»."}
               </p>
             )}
             {shownFeedback && result && result.evaluation.openGoalPercent !== undefined && (

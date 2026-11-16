@@ -6,8 +6,8 @@ export function applyExitDecision(result: CheckResult, level: Level, choice: "go
 
   const decisionError = result.result === "correct" ? "WRONG_EXIT_DECISION" : result.errorType;
   const decisionText = level.exitDecision === "go"
-    ? "Подача чистая: здесь вратарь может выйти на мяч."
-    : "Подача спорная: сначала сохрани контроль ворот.";
+    ? "По условию мяч доступен и путь свободен: в этом упражнении выбираем выход."
+    : "По условию путь к мячу перекрыт игроками: сохрани позицию у ворот.";
   return {
     ...result,
     result: result.result === "dangerous" ? "dangerous" : "wrong",

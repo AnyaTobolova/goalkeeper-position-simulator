@@ -79,10 +79,10 @@ const excellentSummaryByScenarioType: Record<ScenarioType, string> = {
   pass_or_cutback: "Ты перестроился за мячом и занял новую линию удара.",
   cross_goal: "Ты двигаешься за мячом и контролируешь ворота.",
   high_cross: "Ты выбрал стартовую позицию для этой подачи.",
-  corner: "Ты выбрал стартовую позицию у ворот и готов к подаче.",
+  corner: "Ты выбрал стартовую позицию у ворот и развернулся к мячу.",
   free_kick: "Ты занял открытую часть ворот за стенкой.",
   penalty: "Ты на линии ворот по центру, как требуют правила, и готов оттолкнуться в любую сторону.",
-  defender_pressure: "Ты учёл защитника и сохранил правильную позицию.",
+  defender_pressure: "Ты выбрал позицию относительно мяча и ворот.",
   sweeper_position: "Ты стоишь выше и готов помочь команде, не теряя ворота.",
   reaction_to_ball_owner: "Ты быстро нашел игрока с мячом, занял новую линию и готов к удару."
 };
@@ -106,7 +106,7 @@ const summaryByErrorType: Record<FeedbackErrorType, string> = {
   WRONG_BALL_OWNER: "Ты среагировал не на активного игрока с мячом. Сначала найди мяч, потом выбирай позицию.",
   WRONG_BODY_ANGLE: "Позиция ног почти подходит, но корпус нужно повернуть к мячу.",
   WRONG_EXIT_DECISION: "Посмотри ещё раз на подачу и выбери решение.",
-  IGNORED_DEFENDER: "Защитник уже мешает игроку с мячом, поэтому выходить так далеко рискованно.",
+  IGNORED_DEFENDER: "Защитник расположен рядом с мячом. Далёкий выход может оставить ворота открытыми.",
   WRONG_POSITION: "Позиция выбрана неудачно. Нужно вернуться к линии мяча и защитить ворота.",
   ALMOST: "Ты выбрал почти правильную зону. Осталось чуть точнее выбрать позицию."
 };
@@ -129,8 +129,8 @@ const adviceByErrorType: Record<FeedbackErrorType, string> = {
   TOO_LATE_REACTION: "Решай быстрее: найди мяч, сместись на линию и остановись.",
   WRONG_BALL_OWNER: "Сначала найди игрока с мячом, а игроков без мяча держи в поле зрения.",
   WRONG_BODY_ANGLE: "Оставь позицию ног и поверни корпус к мячу.",
-  WRONG_EXIT_DECISION: "Обрати внимание на траекторию и игроков рядом.",
-  IGNORED_DEFENDER: "Учти помощь защитника и не выбегай без причины.",
+  WRONG_EXIT_DECISION: "Прочитай условие подачи и посмотри на игроков.",
+  IGNORED_DEFENDER: "Посмотри, где защитник относительно мяча, и не выбегай без причины.",
   ALMOST: "Сделай маленькую поправку и останься в игровой зоне.",
   WRONG_POSITION: "Найди мяч, центр ворот и вернись на линию удара."
 };
@@ -145,11 +145,11 @@ const reinforceByScenarioType: Record<ScenarioType, string> = {
   one_v_one_loose_touch: "Если мяч отпущен, иногда можно сыграть на опережение. Сначала оцени движение игроков и мяча: на этой схеме скорость не показана.",
   pass_or_cutback: "Запомни правило: мяч поменял точку - позиция вратаря тоже меняется.",
   cross_goal: "Запомни правило: двигайся за мячом и не залипай у старой штанги.",
-  high_cross: "Запомни правило: сначала прочитай траекторию, потом решай - выходить или держать ворота.",
+  high_cross: "В настоящей игре оцени траекторию, расстояние и игроков, прежде чем выходить на мяч.",
   corner: "Запомни правило: при угловом важно видеть мяч, игроков и не провалиться в ворота.",
   free_kick: "Запомни правило: стенка закрывает одну часть, ты отвечаешь за открытую и должен видеть мяч.",
   penalty: "Перед ударом стой на линии ворот. В момент удара часть ноги может быть на линии, над ней или за ней.",
-  defender_pressure: "Запомни правило: если защитник помогает, держи позицию и не выбегай без причины.",
+  defender_pressure: "Посмотри, где защитник относительно мяча; на схеме не видно, успеет ли он помешать удару.",
   sweeper_position: "Запомни правило: когда мяч далеко, можно стоять выше, но не терять ворота за спиной.",
   reaction_to_ball_owner: "Запомни правило: сначала найди активный мяч, потом займи линию мяча и остановись до удара."
 };
@@ -382,7 +382,7 @@ function criterionForKey(key: CriterionKey, result: CheckResult, level: Level): 
         key,
         label: "Стартовая позиция",
         status: sideMiss ? "bad" : currentDepthStatus,
-        text: sideMiss ? "вернись в стартовую стойку" : currentDepthStatus === "good" ? "можно выйти на мяч" : "старт нужно поправить"
+        text: sideMiss ? "вернись в стартовую стойку" : currentDepthStatus === "good" ? "выбрана стартовая зона" : "старт нужно поправить"
       };
     }
     case "wall":
@@ -405,7 +405,7 @@ function criterionForKey(key: CriterionKey, result: CheckResult, level: Level): 
         key,
         label: "Защитник",
         status: error === "IGNORED_DEFENDER" ? "bad" : "good",
-        text: error === "IGNORED_DEFENDER" ? "помощь защитника не учтена" : "ситуация прочитана"
+        text: error === "IGNORED_DEFENDER" ? "защитник рядом с мячом" : "смотри положение защитника"
       };
     case "spaceControl":
       return {
@@ -571,8 +571,8 @@ function summaryForResult(result: CheckResult, error?: FeedbackErrorType) {
   // При угловом и навесе линии удара еще нет: боковая ошибка - это уход из стартовой стойки.
   if ((result.evaluation.scenarioType === "corner" || result.evaluation.scenarioType === "high_cross") && (error === "TOO_LEFT" || error === "TOO_RIGHT")) {
     return error === "TOO_RIGHT"
-      ? "Ты сместился слишком вправо от стартовой стойки. Из этой точки сложнее видеть подачу и успевать на мяч."
-      : "Ты сместился слишком влево от стартовой стойки. Из этой точки сложнее видеть подачу и успевать на мяч.";
+      ? "Ты сместился слишком вправо от условной стартовой зоны."
+      : "Ты сместился слишком влево от условной стартовой зоны.";
   }
 
   if (error === "TOO_LEFT" || error === "TOO_RIGHT" || error === "TOO_CENTRAL" || result.evaluation.outsideShotAngle) {
@@ -593,6 +593,10 @@ function adviceForResult(result: CheckResult, error?: FeedbackErrorType) {
 
   if ((result.evaluation.scenarioType === "corner" || result.evaluation.scenarioType === "high_cross") && (error === "TOO_LEFT" || error === "TOO_RIGHT")) {
     return "Вернись в стартовую стойку по подсказке уровня и держи корпус к мячу.";
+  }
+
+  if ((result.evaluation.scenarioType === "corner" || result.evaluation.scenarioType === "high_cross") && (error === "TOO_DEEP" || error === "TOO_HIGH")) {
+    return error === "TOO_DEEP" ? "Сделай небольшой шаг от линии ворот к стартовой зоне." : "Сделай небольшой шаг назад к стартовой зоне.";
   }
 
   if (error === "TOO_LEFT" || error === "TOO_RIGHT" || error === "TOO_CENTRAL" || result.evaluation.outsideShotAngle) {
@@ -622,11 +626,11 @@ export function buildFeedback(result: CheckResult, level: Level): FeedbackResult
 
   if (error === "WRONG_EXIT_DECISION") {
     const advice = level.exitDecision === "go"
-      ? "Подача чистая: выбери «Выйду на мяч»."
-      : "Подача спорная: выбери «Останусь в воротах».";
+      ? "По условию путь свободен: выбери «Выйду на мяч»."
+      : "По условию путь перекрыт: выбери «Останусь в воротах».";
     feedback.summary = "Позиция ног подходит, но решение на подаче нужно изменить.";
     feedback.mainAdvice = advice;
-    feedback.details = { why: level.exitDecision === "go" ? "В этом эпизоде траектория чистая и можно выйти на мяч." : "В этом эпизоде выход в скопление игроков рискован.", howToFix: advice };
+    feedback.details = { why: level.exitDecision === "go" ? "В упражнении предполагается, что мяч доступен, а путь к нему свободен; скорость и высота не моделируются." : "В упражнении предполагается, что путь к мячу перекрыт игроками; выход в скопление игроков рискован.", howToFix: advice };
   }
 
   validateFeedback(feedback);
