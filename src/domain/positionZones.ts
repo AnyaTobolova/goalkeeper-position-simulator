@@ -234,12 +234,14 @@ export function getZoneConfig(level: Level, pitch: PitchConfig): ZoneConfig {
 
   const shotType = depthScenarioType(level, pitch);
 
-  if (shotType === "one_v_one_loose_touch") {
-    return { ...zoneConfigs.one_v_one_loose_touch, idealDepth: clamp(distance * 0.46 * s, 7 * s, Math.max(7 * s, distance - 2.2)) };
-  }
-
-  if (shotType === "one_v_one") {
-    return { ...zoneConfigs.one_v_one, idealDepth: clamp(distance * 0.42 * s, 5.5 * s, Math.max(6 * s, distance - 2.4)) };
+  if (shotType === "one_v_one_loose_touch" || shotType === "one_v_one") {
+    // Условная стойка перед ударом, а не оценка того, кто первым добежит до мяча.
+    // Сохраняем прежний коэффициент модели, но не навязываем минимальный выход,
+    // который при близком мяче мог поставить вратаря вплотную к нему или за ним.
+    const center = goalCenter(pitch);
+    const ballDistance = Math.hypot(ball.x - center.x, ball.y - center.y);
+    const fraction = shotType === "one_v_one_loose_touch" ? 0.46 : 0.42;
+    return { ...zoneConfigs[shotType], idealDepth: ballDistance * fraction * s };
   }
 
   if (shotType === "cross_goal") {

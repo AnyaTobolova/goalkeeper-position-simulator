@@ -371,6 +371,23 @@ describe("вариации координат при повторах", () => {
   });
 });
 
+describe("выход один на один", () => {
+  it("расчётная стойка остаётся между воротами и мячом во всех форматах и вариациях", () => {
+    for (const pitch of Object.values(pitchPresets).filter((item) => item.presetId !== "custom")) {
+      for (const base of levels.filter((item) => item.category === "one_v_one")) {
+        for (let attempt = 0; attempt <= 20; attempt++) {
+          const level = applyLevelVariation(base, attempt);
+          const zone = buildPositionZones(level, pitch);
+          const ball = toMeters(level.ball, pitch);
+          const distanceToBall = Math.hypot(ball.x - zone.center.x, ball.y - zone.center.y);
+          expect(zone.cfg.idealDepth, `${level.id}, ${pitch.presetId}, ${attempt}`).toBeGreaterThan(0);
+          expect(zone.cfg.idealDepth, `${level.id}, ${pitch.presetId}, ${attempt}`).toBeLessThan(distanceToBall * 0.7);
+        }
+      }
+    }
+  });
+});
+
 describe("зеркальные вариации", () => {
   it("mirrorText меняет стороны и не трогает похожие слова", () => {
     expect(mirrorText("Мяч справа, закрой правый угол")).toBe("Мяч слева, закрой левый угол");

@@ -20,7 +20,7 @@ import { facingAngleToBall, normalizeAngle } from "./domain/geometry";
 import { levels } from "./domain/levels";
 import { pitchPresets } from "./domain/presets";
 import { pitchSettingsError } from "./domain/pitchSettings";
-import { criteriaByScenarioType, getBallSide, type CriterionKey } from "./domain/scenarios";
+import { criteriaByScenarioType, getBallSide, inferScenarioType, type CriterionKey } from "./domain/scenarios";
 import type { CheckResult, ErrorType, Level, PitchConfig, PlayerProfile, Point, Progress, ReactionTimeSeconds, ResultKind, TrainingMode, VisualHint, WallConfig } from "./domain/types";
 import {
   loadActivePlayerId,
@@ -1715,6 +1715,9 @@ export function App() {
                   ? `${activePlayer?.name ?? "Игрок"}, сначала прочитай расстановку. Мяч появится через мгновение.`
                   : `${activePlayer?.name ?? "Игрок"}, выбери позицию до удара.`}
             </p>
+            {!result && inferScenarioType(level, activePitch) === "one_v_one_loose_touch" && (
+              <p className="session-summary-note">Мяч отпущен от ноги. Выбери стойку перед возможным ударом: скорость здесь не показана, поэтому нельзя определить, успеешь ли ты забрать мяч.</p>
+            )}
             {shownFeedback && result?.evaluation.openShotTarget && shotExample(result, level, goalkeeper, activePitch, level.freeKick ? wall : undefined) && (
               <p className="session-summary-note">Это пример удара по условной схеме, а не прогноз. Оценка позиции показана отдельно.</p>
             )}
