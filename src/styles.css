@@ -3532,7 +3532,7 @@ input:focus {
 .result-legend-disclosure .result-legend { margin-top: 2px; }
 
 @media (max-width: 820px) and (orientation: portrait) {
-  .field { height: clamp(300px, calc(100svh - 420px), 500px); min-height: 0; }
+  .field { height: auto; max-height: clamp(300px, calc(100svh - 420px), 500px); min-height: 0; }
 }
 
 /* Главное меню: лёгкие CSS-акценты в стиле игрового поля. */
