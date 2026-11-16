@@ -230,6 +230,8 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
   const keeperSvg = percentToSvg(goalkeeper);
   const wallSvg = wall ? percentToSvg(wall) : null;
   const wallHorizontalScale = wallPlayerWidthMeters * scaleX / 2.55;
+  // На телефоне стенка узкая по масштабу поля, поэтому область захвата шире рисунка.
+  const wallHitWidth = wall ? Math.max(wallWidthMeters(wall.count) * scaleX, compactField ? 10 : 6) : 0;
   const optimalSvg = result ? percentToSvg(result.evaluation.optimalPoint) : null;
   const correctZone = result?.evaluation.correctOrientedZone;
   const almostZone = result?.evaluation.almostOrientedZone;
@@ -719,9 +721,9 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
           <>
             <rect
               className="wall-hit"
-              x={wallSvg.x - Math.max(wallWidthMeters(wall.count) * scaleX / 2, 3)}
+              x={wallSvg.x - wallHitWidth / 2}
               y={wallSvg.y - 8.4 * playerScale}
-              width={Math.max(wallWidthMeters(wall.count) * scaleX, 6)}
+              width={wallHitWidth}
               height={9.2 * playerScale}
               rx="2"
               onPointerDown={handleWallPointerDown}
