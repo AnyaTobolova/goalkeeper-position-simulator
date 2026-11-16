@@ -680,6 +680,13 @@ h2 {
   pointer-events: none;
 }
 
+.wall-ground-width {
+  stroke: #78c5ff;
+  stroke-width: 0.45;
+  stroke-linecap: butt;
+  pointer-events: none;
+}
+
 .wall-hit {
   fill: transparent;
   cursor: grab;

@@ -32,6 +32,12 @@ export function openGoalSegments(ball: Point, keeper: Point, pitch: PitchConfig)
 
 // Оценочная ширина детской стенки: 0,5 м на игрока, плечом к плечу.
 // Это только наглядная модель на плоскости, без учёта высоты удара.
+export const wallPlayerWidthMeters = 0.5;
+
+export function wallWidthMeters(count: number): number {
+  return Math.max(0, count) * wallPlayerWidthMeters;
+}
+
 export function openGoalSegmentsWithWall(
   ball: Point,
   keeper: Point,
@@ -41,7 +47,7 @@ export function openGoalSegmentsWithWall(
   const segments = openGoalSegments(ball, keeper, pitch);
   if (wall.count <= 0 || ball.y <= 0.2 || wall.y < 0 || wall.y >= ball.y - 0.05) return segments;
 
-  const halfWidth = wall.count * 0.5 / 2;
+  const halfWidth = wallWidthMeters(wall.count) / 2;
   const projectionFactor = ball.y / (ball.y - wall.y);
   const shadowLeft = ball.x + (wall.x - halfWidth - ball.x) * projectionFactor;
   const shadowRight = ball.x + (wall.x + halfWidth - ball.x) * projectionFactor;

@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { openGoalShare } from "../geometry";
-import { openGoalSegments, openGoalSegmentsWithWall } from "../openGoalSegments";
+import { openGoalSegments, openGoalSegmentsWithWall, wallPlayerWidthMeters, wallWidthMeters } from "../openGoalSegments";
 import { pitchPresets } from "../presets";
 
 describe("Открытые отрезки ворот", () => {
+  it("использует одинаковую условную ширину для рисунка и проекции стенки", () => {
+    expect(wallPlayerWidthMeters).toBe(0.5);
+    expect(wallWidthMeters(0)).toBe(0);
+    expect(wallWidthMeters(4)).toBe(2);
+  });
   it("совпадают с существующим процентом для разных положений и размеров ворот", () => {
     for (const pitch of Object.values(pitchPresets)) {
       for (const ball of [{ x: pitch.fieldWidth / 2, y: 20 }, { x: pitch.fieldWidth * 0.2, y: 12 }, { x: pitch.fieldWidth * 0.8, y: 0.1 }]) {

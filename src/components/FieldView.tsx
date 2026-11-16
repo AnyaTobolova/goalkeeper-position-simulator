@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CheckResult, Level, OrientedZone, PitchConfig, Point, VisualHint, WallConfig, Zone } from "../domain/types";
 import { fromMeters, goalCenter, leftPost, rightPost, toMeters } from "../domain/geometry";
-import { openGoalSegments, openGoalSegmentsWithWall } from "../domain/openGoalSegments";
+import { openGoalSegments, openGoalSegmentsWithWall, wallPlayerWidthMeters, wallWidthMeters } from "../domain/openGoalSegments";
 import { buildPositionZones, classifyLocalPosition, toLocal } from "../domain/positionZones";
 import { shotExample } from "../domain/shotExample";
 
@@ -229,6 +229,7 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
   const rightSvg = scalePoint(right);
   const keeperSvg = percentToSvg(goalkeeper);
   const wallSvg = wall ? percentToSvg(wall) : null;
+  const wallHorizontalScale = wallPlayerWidthMeters * scaleX / 2.55;
   const optimalSvg = result ? percentToSvg(result.evaluation.optimalPoint) : null;
   const correctZone = result?.evaluation.correctOrientedZone;
   const almostZone = result?.evaluation.almostOrientedZone;
@@ -718,15 +719,18 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
           <>
             <rect
               className="wall-hit"
-              x={wallSvg.x - ((wall.count - 1) * 2.55 / 2 + 2.6) * playerScale}
+              x={wallSvg.x - Math.max(wallWidthMeters(wall.count) * scaleX / 2, 3)}
               y={wallSvg.y - 8.4 * playerScale}
-              width={((wall.count - 1) * 2.55 + 5.2) * playerScale}
+              width={Math.max(wallWidthMeters(wall.count) * scaleX, 6)}
               height={9.2 * playerScale}
               rx="2"
               onPointerDown={handleWallPointerDown}
               onPointerMove={handleWallPointerMove}
             />
-            <WallFigure x={wallSvg.x} y={wallSvg.y} count={wall.count} scale={playerScale} />
+            <line className="wall-ground-width" x1={wallSvg.x - wallWidthMeters(wall.count) * scaleX / 2} x2={wallSvg.x + wallWidthMeters(wall.count) * scaleX / 2} y1={wallSvg.y + 0.5} y2={wallSvg.y + 0.5}>
+              <title>Условная ширина стенки на земле</title>
+            </line>
+            <WallFigure x={wallSvg.x} y={wallSvg.y} count={wall.count} scale={wallHorizontalScale} />
           </>
         )}
 

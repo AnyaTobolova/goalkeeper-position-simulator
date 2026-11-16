@@ -1728,6 +1728,7 @@ export function App() {
             {!result && level.category === "defender_pressure" && (
               <p className="session-summary-note">Посмотри, где защитник относительно мяча и ворот. На схеме не показано, успеет ли он помешать удару.</p>
             )}
+            {level.freeKick && <p className="session-summary-note">Голубая линия под стенкой показывает её условную ширину на земле. Это схема, а не вероятность гола.</p>}
             {shownFeedback && result?.evaluation.openShotTarget && shotExample(result, level, goalkeeper, activePitch, level.freeKick ? wall : undefined) && (
               <p className="session-summary-note">Это пример удара по условной схеме, а не прогноз. Оценка позиции показана отдельно.</p>
             )}
