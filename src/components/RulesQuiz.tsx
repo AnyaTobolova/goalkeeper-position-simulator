@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BookOpen, RotateCcw, X } from "lucide-react";
-import { rulesQuizCards } from "../domain/rulesQuiz";
+import { rulesQuizCards, shuffleQuizAnswers } from "../domain/rulesQuiz";
 
 type RulesQuizProps = {
   onClose: () => void;
@@ -11,7 +11,8 @@ export function RulesQuiz({ onClose }: RulesQuizProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
-  const card = rulesQuizCards[Math.min(cardIndex, rulesQuizCards.length - 1)];
+  const [cards, setCards] = useState(() => shuffleQuizAnswers(rulesQuizCards));
+  const card = cards[Math.min(cardIndex, cards.length - 1)];
 
   function chooseAnswer(index: number) {
     if (selectedIndex !== null) {
@@ -40,6 +41,7 @@ export function RulesQuiz({ onClose }: RulesQuizProps) {
     setSelectedIndex(null);
     setCorrectCount(0);
     setFinished(false);
+    setCards(shuffleQuizAnswers(rulesQuizCards));
   }
 
   return (
@@ -64,7 +66,7 @@ export function RulesQuiz({ onClose }: RulesQuizProps) {
             <p>
               {correctCount === rulesQuizCards.length
                 ? "Отлично: ты знаешь правила вратаря. Повтори квиз через пару недель, чтобы закрепить."
-                : "Хорошая тренировка. Перечитай объяснения к ошибкам и пройди квиз еще раз."}
+                : "Хорошая тренировка. Пройди квиз ещё раз и прочитай объяснения после ответов."}
             </p>
             <div className="modal-actions">
               <button type="button" onClick={restart}>
