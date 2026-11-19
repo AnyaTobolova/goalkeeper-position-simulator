@@ -36,7 +36,7 @@ npm run build    # tsc + vite build
 ## Что нельзя ломать
 
 - **Тесты** (`npm run test`) — зелёные перед каждым коммитом.
-- **Соседние сайты на VPS.** На `62.113.111.4` через общий Caddy работают другие проекты владельца (n8n, supabase, api, app, academy). Правки Caddy — только аддитивно, с бэкапом, `caddy validate` и `systemctl reload` (не restart). Nginx не ставить — конфликт портов с Caddy.
+- **Соседние сайты на VPS.** На новом VPS `185.225.35.74` через общий Caddy работают «Мой день» и чек-лист; Академия отложена. Правки Caddy — только аддитивно, с бэкапом, `caddy validate` и `systemctl reload` (не restart). Nginx не ставить — конфликт портов с Caddy.
 - **Секреты.** `ssh.txt` и любые ключи не коммитить (защищено `.gitignore`).
 - **GitHub Pages** закрыт намеренно — не восстанавливать workflow/ветку `gh-pages`.
 
