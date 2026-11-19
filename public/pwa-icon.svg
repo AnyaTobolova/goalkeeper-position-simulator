@@ -1,7 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <rect width="256" height="256" rx="48" fill="#102218"/>
-  <path d="M42 178h172v28H42z" fill="#f7fbf6"/>
-  <path d="M64 178V70h128v108" fill="none" stroke="#f7fbf6" stroke-width="16" stroke-linejoin="round"/>
-  <circle cx="128" cy="129" r="33" fill="#22c55e"/>
-  <path d="M112 129l12 12 24-30" fill="none" stroke="#102218" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#243463"/>
+      <stop offset="1" stop-color="#0d1733"/>
+    </linearGradient>
+    <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#36a257"/>
+      <stop offset="1" stop-color="#248045"/>
+    </linearGradient>
+    <clipPath id="round"><rect width="512" height="512" rx="112"/></clipPath>
+  </defs>
+  <g clip-path="url(#round)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <path d="M-20 430 Q256 388 532 430 L532 512 L-20 512 Z" fill="url(#grass)"/>
+    <ellipse cx="256" cy="430" rx="150" ry="20" fill="#000" opacity="0.14"/>
+    <g stroke="#cdd9f0" stroke-width="5" opacity="0.8">
+      <path d="M182 152 L182 404 M210 152 L210 404 M238 152 L238 404 M266 152 L266 404 M294 152 L294 404 M322 152 L322 404 M350 152 L350 404"/>
+      <path d="M160 190 L372 190 M160 230 L372 230 M160 270 L372 270 M160 310 L372 310 M160 350 L372 350 M160 390 L372 390"/>
+    </g>
+    <g stroke="#f6f9ff" stroke-width="20" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M156 152 L156 404 M356 152 L356 404 M146 152 L366 152"/>
+    </g>
+    <circle cx="330" cy="190" r="42" fill="#f8fbff" stroke="#0d1733" stroke-width="4"/>
+    <path d="M330 164 L351 180 L343 206 L317 206 L309 180 Z" fill="#17254c"/>
+    <g stroke="#0d1733" stroke-width="3.5" opacity="0.85">
+      <path d="M330 148 L330 164 M356 172 L351 180 M304 172 L309 180 M318 221 L309 206 M342 221 L351 206"/>
+    </g>
+  </g>
 </svg>

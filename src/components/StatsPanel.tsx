@@ -150,6 +150,53 @@ export function StatsPanel({ levels, players, activePlayerId, selectedPlayerId, 
         {skills.penaltyAttempts > 0 && <p>Пенальти: попыток — {skills.penaltyAttempts}. Пока в игре одна ситуация, поэтому судить по ней обо всей теме рано.</p>}
       </div>
 
+      <details className="stats-details parent-summary">
+        <summary>Родителю и тренеру</summary>
+        <p className="parent-intro">
+          Короткая сводка по игроку {selectedPlayer?.name}: что уже уверенно, над чем поработать и на что смотреть на
+          реальной тренировке.
+        </p>
+        <div className="summary-row">
+          <span>Закреплено ситуаций</span>
+          <strong>
+            {mastered}/{levels.length}
+          </strong>
+        </div>
+        <div className="parent-block">
+          <strong>Уже уверенно</strong>
+          <span>{skills.strong.length ? skills.strong.map((item) => item.title).join(", ") : "Пока рано — нужно больше попыток."}</span>
+        </div>
+        <div className="parent-block">
+          <strong>Над чем поработать</strong>
+          <span>
+            {skills.practice.length
+              ? skills.practice.map((item) => item.title).join(", ")
+              : errorStats[0]
+                ? errorTitles[errorStats[0].type]
+                : "Явных слабых мест пока нет."}
+          </span>
+        </div>
+        <div className="parent-block">
+          <strong>Как проверить вживую</strong>
+          <ul>
+            <li>Встаёт ли на линию «мяч — центр ворот» (ноги в нужной точке).</li>
+            <li>Развёрнут ли корпус к мячу, а не стоит боком.</li>
+            <li>Не слишком ли глубоко в воротах: ближе к мячу — меньше открытых ворот.</li>
+            <li>Видит ли мяч (не закрыт своими) и закрыт ли ближний угол.</li>
+          </ul>
+        </div>
+        <div className="parent-block">
+          <strong>Что показать тренеру</strong>
+          <ul>
+            <li>Игра учит позиции по линии мяча и закрытию ближнего угла.</li>
+            <li>Глубина зависит от размера ворот (эталон — юниорские 5 м).</li>
+            <li>Стандарты: стенка закрывает ближний угол, вратарь — открытую часть; на штрафных вратарь должен видеть мяч.</li>
+            <li>Пенальти: часть ноги на линии ворот до удара.</li>
+          </ul>
+        </div>
+        <p className="parent-note">Полный список ситуаций для живой проверки — в документе «Живая проверка с ребёнком».</p>
+      </details>
+
       <details className="stats-details">
       <summary>Подробности и результаты</summary>
       <div className="summary-row">

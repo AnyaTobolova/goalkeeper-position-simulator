@@ -361,7 +361,8 @@ function errorLabel(errorType?: ErrorType) {
 }
 
 function startGoalkeeperForLevel(level: Level, index: number): Point {
-  const yVariants = [-3.2, 0.25, 1.15];
+  // Стартовая глубина варьируется, но всегда перед линией ворот (не в сетке).
+  const yVariants = [2.2, 0.25, 1.15];
 
   return {
     x: Math.max(12, Math.min(88, level.initialGoalkeeper.x)),

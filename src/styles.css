@@ -3679,3 +3679,37 @@ input:focus {
 .alternative-pass button {
   margin: 4px 8px 0 0;
 }
+
+/* Родителю и тренеру — сводка внутри статистики */
+.parent-summary > summary {
+  color: var(--yellow);
+  font-weight: 700;
+}
+.parent-summary .parent-intro {
+  color: var(--muted);
+  margin: 8px 0 12px;
+}
+.parent-block {
+  background: var(--navy-raised);
+  border: 1px solid var(--navy-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 8px 0;
+}
+.parent-block > strong {
+  display: block;
+  color: #8fb4ff;
+  margin-bottom: 4px;
+}
+.parent-block ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.parent-block li {
+  margin: 3px 0;
+}
+.parent-note {
+  color: var(--muted);
+  font-size: 0.9em;
+  margin-top: 8px;
+}

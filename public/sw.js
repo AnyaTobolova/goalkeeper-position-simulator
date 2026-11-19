@@ -1,6 +1,6 @@
 // При выпуске новой версии игры поднимаем номер: старый кэш удаляется на activate.
-const cacheName = "goalkeeper-sim-v3";
-const shellAssets = ["/", "/index.html", "/pwa-icon.svg"];
+const cacheName = "goalkeeper-sim-v4";
+const shellAssets = ["/", "/index.html", "/pwa-icon.svg", "/apple-touch-icon.png", "/icon-192.png", "/icon-512.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

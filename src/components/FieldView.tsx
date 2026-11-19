@@ -175,6 +175,8 @@ function GoalkeeperFigure({
 }) {
   return (
     <g className="figure goalkeeper-figure keeper-figure" transform={`translate(${x} ${y}) scale(${scale})`}>
+      <FootballerBody keeper />
+      {/* Конус направления — поверх спрайта, иначе непрозрачная фигура его перекрывает. */}
       <g transform="translate(0 -3.85)">
         <g
           className="keeper-direction"
@@ -187,7 +189,6 @@ function GoalkeeperFigure({
           <path className="keeper-facing-mark" d="M 0 -6.05 L -0.98 -4.4 L 0.98 -4.4 Z" />
         </g>
       </g>
-      <FootballerBody keeper />
     </g>
   );
 }
