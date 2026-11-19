@@ -956,21 +956,6 @@ export function App() {
   const [badgeToast, setBadgeToast] = useState<BadgeState | null>(null);
   const badgeToastTimerRef = useRef<number | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
-  // Подсказка «установи как приложение»: Chrome/Android дает событие установки,
-  // на iOS показываем инструкцию. Живет в сворачиваемом блоке меню «Данные и установка».
-  const [installPromptEvent, setInstallPromptEvent] = useState<(Event & { prompt: () => Promise<unknown> }) | null>(null);
-  const isIosBrowser =
-    typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.matchMedia("(display-mode: standalone)").matches;
-
-  useEffect(() => {
-    const onBeforeInstall = (event: Event) => {
-      event.preventDefault();
-      setInstallPromptEvent(event as Event & { prompt: () => Promise<unknown> });
-    };
-
-    window.addEventListener("beforeinstallprompt", onBeforeInstall);
-    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall);
-  }, []);
   // Специальные сессии: «Слабые места», «Тренировка дня», «Марафон».
   // Список сценариев фиксируется на момент запуска, чтобы не менялся по ходу.
   const [customSession, setCustomSession] = useState<{ kind: "weak" | "day" | "marathon" | "single"; ids: string[] } | null>(null);
@@ -2167,22 +2152,6 @@ export function App() {
                   </button>
                   <input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={importProgress} />
                 </div>
-                {(installPromptEvent || isIosBrowser) && (
-                  <div className="install-banner">
-                    <span>
-                      {installPromptEvent
-                        ? "Игру можно установить на главный экран - она откроется как обычное приложение."
-                        : "На iPhone/iPad: нажми «Поделиться», затем «На экран Домой» - игра станет приложением."}
-                    </span>
-                    {installPromptEvent && (
-                      <div className="install-banner-actions">
-                        <button type="button" className="primary" onClick={() => void installPromptEvent.prompt()}>
-                          Установить
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
                 <button type="button" onClick={() => setMenuStep(dataReturnStep)}>Назад</button>
               </div>}
               {menuStep === "player" && <button type="button" className="menu-data-link" onClick={() => { setDataReturnStep("player"); setMenuStep("data"); }}>Данные и установка</button>}
