@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CheckResult, Level, OrientedZone, PitchConfig, Point, VisualHint, WallConfig, Zone } from "../domain/types";
 import { fromMeters, goalCenter, leftPost, rightPost, toMeters } from "../domain/geometry";
-import { openGoalSegments, openGoalSegmentsWithWall, wallPlayerWidthMeters, wallWidthMeters } from "../domain/openGoalSegments";
+import { openGoalSegments, openGoalSegmentsWithWall, wallWidthMeters } from "../domain/openGoalSegments";
 import { buildPositionZones, classifyLocalPosition, toLocal } from "../domain/positionZones";
 import { shotExample } from "../domain/shotExample";
 
@@ -230,9 +230,6 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
   const rightSvg = scalePoint(right);
   const keeperSvg = percentToSvg(goalkeeper);
   const wallSvg = wall ? percentToSvg(wall) : null;
-  const wallHorizontalScale = wallPlayerWidthMeters * scaleX / 2.55;
-  // На телефоне стенка узкая по масштабу поля, поэтому область захвата шире рисунка.
-  const wallHitWidth = wall ? Math.max(wallWidthMeters(wall.count) * scaleX, compactField ? 10 : 6) : 0;
   const optimalSvg = result ? percentToSvg(result.evaluation.optimalPoint) : null;
   const correctZone = result?.evaluation.correctOrientedZone;
   const almostZone = result?.evaluation.almostOrientedZone;
@@ -342,6 +339,9 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
   const goalSvgX = (pitch.fieldWidth / 2 - pitch.goalWidth / 2) * scaleX;
   const goalSvgWidth = pitch.goalWidth * scaleX;
   const playerScale = compactField ? 0.92 : 0.78;
+  // Фигуры увеличены для читаемости, как остальные футболисты.
+  // Расчётную ширину отдельно показывает отрезок на земле.
+  const wallHitWidth = wall ? Math.max(((wall.count - 1) * 2.55 + 5.2) * playerScale, compactField ? 10 : 6) : 0;
   const goalkeeperScale = compactField ? 1.02 : 0.84;
   // Глубина сетки у земли реалистична при ~0.36 от ширины ворот (а не почти в ширину).
   const goalDepth = Math.max(3, Math.min(8, goalSvgWidth * 0.36));
@@ -733,7 +733,7 @@ export function FieldView({ pitch, level, goalkeeper, goalkeeperFacing, result, 
             <line className="wall-ground-width" x1={wallSvg.x - wallWidthMeters(wall.count) * scaleX / 2} x2={wallSvg.x + wallWidthMeters(wall.count) * scaleX / 2} y1={wallSvg.y + 0.5} y2={wallSvg.y + 0.5}>
               <title>Условная ширина стенки на земле</title>
             </line>
-            <WallFigure x={wallSvg.x} y={wallSvg.y} count={wall.count} scale={wallHorizontalScale} />
+            <WallFigure x={wallSvg.x} y={wallSvg.y} count={wall.count} scale={playerScale} />
           </>
         )}
 

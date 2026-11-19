@@ -1737,7 +1737,7 @@ export function App() {
             {!result && level.category === "defender_pressure" && (
               <p className="session-summary-note">Посмотри, где защитник относительно мяча и ворот. На схеме не показано, успеет ли он помешать удару.</p>
             )}
-            {!result && level.freeKick && <p className="session-summary-note">Голубая линия под стенкой показывает её условную ширину на земле. Это схема, а не вероятность гола.</p>}
+            {!result && level.freeKick && <p className="session-summary-note">Фигуры увеличены для наглядности. Голубая линия под стенкой показывает её условную ширину на земле. Это схема, а не вероятность гола.</p>}
             {shownFeedback && result && (
               <>
                 {result.result !== "correct" && positiveCriterion && (
